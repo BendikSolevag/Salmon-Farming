@@ -1,17 +1,16 @@
-from environment import Facility
+from config import TIMESTEPS_PER_ANNUM
+from environment import Facility, oup
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
-environment = Facility()
-print(environment.tank_fish)
-environment.control([[10, 0, 0, 0, 0, 0, 0, 0]])
 
-for _ in tqdm(range(400)):
-  environment.grow()
 
-print(environment.tank_fish)
+xs = []
+for i, spot in enumerate(oup()):
+  xs.append(spot)
+  print(i)
+  if i > TIMESTEPS_PER_ANNUM * 5:
+    break
 
-weight, mistakes = environment.control([[0, 0, 0, 0, 5, 0, 0, 0]])
-
-print(environment.tank_fish)
-print(weight)
-print(mistakes)
+plt.plot(xs)
+plt.show()

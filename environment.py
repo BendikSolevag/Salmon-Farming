@@ -2,6 +2,7 @@ import torch
 import numpy as np
 
 from config import (
+  TIMESTEPS_PER_ANNUM,
   COST_SMOLT,
   COST_FEED,
   COST_FIXED_HARVEST,
@@ -125,28 +126,27 @@ class Facility:
             j += 1
           rate = self.growth_table[j][1]
           self.tank_fish[tank_i][fish_i] *= rate
+  
+
 
 
 
 def oup():
-  x = np.zeros(SPOT_N_STEPS)
-  f = np.zeros(SPOT_N_STEPS)
-  spot = np.zeros(SPOT_N_STEPS)
+  i = 0
+  x = 0
+  f = np.sin(0)
+  spot = x + f
 
-  x[0] = 0
-  f[0] = np.sin(0)
-  spot[0] = x[0] + f[0]
-
-  for t in range(1, SPOT_N_STEPS):
-    dx = -SPOT_THETA * x[t-1] * SPOT_DT + SPOT_SIGMA * np.sqrt(SPOT_DT) * np.random.normal()
-    x[t] = x[t-1] + dx
-    f[t] = np.sin(((2*3.14)/12)*t) + (0.02 / 12) * t
-    spot[t] = x[t] + f[t]    
-  return x, f, spot
-
-  
-
-
+  while True:
+    #print('x', x)
+    #print('f', f)
+    #print('spot', spot)
+    yield spot
+    i = i + 1
+    dx = -SPOT_THETA * x * SPOT_DT + SPOT_SIGMA * np.sqrt(SPOT_DT) * np.random.normal()
+    x = x + dx
+    f = np.sin(((2*3.14)/TIMESTEPS_PER_ANNUM)*i) + (0.02 / TIMESTEPS_PER_ANNUM) * i
+    spot = x + f
 
 
 
