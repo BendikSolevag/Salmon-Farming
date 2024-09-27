@@ -13,13 +13,11 @@ from config import (
   SPOT_THETA,
   SPOT_SIGMA, 
   SPOT_DT, 
-  SPOT_N_STEPS
   
 )
 
 
 class Facility:
-
   def __init__(self):
     self.COST_SMOLT = torch.tensor(COST_SMOLT)
     self.COST_FEED = torch.tensor(COST_FEED)
@@ -27,7 +25,10 @@ class Facility:
     self.N_TANKS = torch.tensor(N_TANKS)
     self.MAX_BIOMASS_PER_TANK = torch.tensor(MAX_BIOMASS_PER_TANK)
     self.MAX_BIOMASS_FACILITY = torch.tensor(MAX_BIOMASS_FACILITY)
-    self.tank_fish = [[] for _ in range(N_TANKS)]
+
+    # Each individual tank is given as a list of floating point numbers. 
+    # The facility state tank_fish becomes a list of lists of numbers.
+    self.tank_fish = [[] for _ in range(self.N_TANKS)]
     self.growth_table = [
       [30, 1.0257],
       [100, 1.0231],
@@ -65,8 +66,6 @@ class Facility:
       [5250, 1.0048]
       ]
 
-
-
   def harvest(self, population, to_harvest, lo, hi):
       """
       Iterates over fish population in a single tank. 
@@ -76,16 +75,21 @@ class Facility:
       harvest_weight = 0
       identified = 0
       fish_i = 0
+      # Iterate through the population until we have harvested the specified number of fish
       while identified < to_harvest and fish_i < len(population):
         fish = population[fish_i]
         if fish >= lo and fish < hi:
+          # If the evaluated fish fits the size requirements, add its weight to the counter and remove the fish from the population.
           identified += 1
           harvest_weight += fish
           population.pop(fish_i)
           continue
         fish_i += 1
       
-      return harvest_weight, to_harvest - identified
+      # If the control matrix specifies to harvest more fish than are available in the population, this should penalize the reward function.
+      penalties = to_harvest - identified
+      return harvest_weight, penalties
+  
 
   def control(self, control_matrix):
     """
@@ -101,33 +105,68 @@ class Facility:
     for tank_i in range(len(control_matrix)):
       tank_control = control_matrix[tank_i]
 
-      # Take note of how many smolt we wish to release. (We do this last to avoid iterating over the smolt unneccesarily)
-      to_release = tank_control[0]
-  
       # Iterate over weight classes. 1kg+, 2kg+, 3kg+, 4kg+, 5kg+, 6kg+
       tank_population = self.tank_fish[tank_i]
       for i in range(1, 7):
+        # Identify the weight harvested for the given weight class, and number of penalties
         weight, penalties = self.harvest(tank_population, tank_control[i], i*1000, (i+1)*1000)
         harvest_weight += weight
         missing_fish_penalties += penalties
         
-      tank_population += [30 for _ in range(to_release)]
+      # Add smolt to tank (We do this last to avoid iterating over the smolt unneccesarily)
+      tank_population += [30.0 for _ in range(tank_control[0])]
     
     return harvest_weight, missing_fish_penalties
 
 
   def grow(self):
+    """
+      Iterates through each tank's populations and applies the growth table (skretting) to the fish.
+    """
     for tank_i in range(len(self.tank_fish)):
       for fish_i in range(len(self.tank_fish[tank_i])):
           current = self.tank_fish[tank_i][fish_i]
           rate = 1.0257
           j = 0
+          # Iterate through the growth table, comparing the current fish's size to growth table weight groups. 
           while j < len(self.growth_table) - 1 and current > self.growth_table[j][0]:
             j += 1
           rate = self.growth_table[j][1]
+          # Apply the identified growth rate to the fish
           self.tank_fish[tank_i][fish_i] *= rate
   
+  
+  def model_input(self):
+    """
+    @returns Tensor with size (N_TANKS, 16), each row i denoting an individual tank, 
+      each column j denoting the number of fish in each weight class, and the average weight of each fish
+    """
+    out = torch.zeros((self.N_TANKS, 16))
 
+    for i in range(len(self.tank_fish)):
+      tank = self.tank_fish[i]
+      for fish in tank:
+
+        
+        
+        
+        # Increment the weight group
+        out[i, 2 * int(fish // 1000)] += 1
+
+        
+        # Increment the weight count
+        out[i, 2 * int(fish // 1000) + 1] += fish
+
+      
+      # Use average weight rather than total weight
+      for j in range(8):
+        if out[i, 2*j] != 0.0:
+          out[i, (2*j)+1] = out[i, (2*j)+1] / out[i, 2*j]
+      
+
+    # TODO: Consider using shape (2*N_TANKS, 8), rather than (N_TANKS, 16)
+    return out
+        
 
 
 
@@ -150,10 +189,3 @@ def oup():
 
 
 
-
-
-
-
-
-
-    

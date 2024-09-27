@@ -5,12 +5,17 @@ import matplotlib.pyplot as plt
 
 
 
-xs = []
-for i, spot in enumerate(oup()):
-  xs.append(spot)
-  print(i)
-  if i > TIMESTEPS_PER_ANNUM * 5:
-    break
 
-plt.plot(xs)
-plt.show()
+fac = Facility()
+
+
+fac.control([[8, 0, 0, 0, 0, 0, 0, 0]])
+
+for _ in range(200):
+  fac.grow()
+
+out = fac.model_input()
+print(out)
+
+
+
