@@ -122,6 +122,7 @@ class Facility:
     return harvest_weight, missing_fish_penalties
 
 
+
   def grow(self):
     """
       Iterates through each tank's populations and applies the growth table (skretting) to the fish.
@@ -131,7 +132,7 @@ class Facility:
       for fish_i in range(len(self.tank_fish[tank_i])):
           current = self.tank_fish[tank_i][fish_i]
           if current > 5500:
-            rate = 1 + (lastbase * ( (2 * (8000 - current)) / 8000)**2)
+            rate = 1 + (lastbase * ( (2 * (7500 - current)) / 7500)**2)
             self.tank_fish[tank_i][fish_i] *= rate
             continue
 
@@ -171,10 +172,13 @@ class Facility:
     # TODO: Consider using shape (2*N_TANKS, 8), rather than (N_TANKS, 16)
     return out
   
+
+  def harvest_yield(self, harvest_weight, spot):
+    return harvest_weight * spot
+
+  
   def reward(self, harvest_weight, penalties, spot):
     
-
-
     # In the profit maximising case, reward spot price, penalise missing fish
     return spot * harvest_weight - MISSING_FISH_PENALTY_FACTOR * penalties
     
@@ -184,7 +188,7 @@ class Facility:
 def oup():
   i = 0
   x = 0
-  f = np.sin(0)
+  f = 100 + np.sin(0)
   spot = x + f
 
   while True:
@@ -195,7 +199,7 @@ def oup():
     i = i + 1
     dx = -SPOT_THETA * x * SPOT_DT + SPOT_SIGMA * np.sqrt(SPOT_DT) * np.random.normal()
     x = x + dx
-    f = np.sin(((2*3.14)/TIMESTEPS_PER_ANNUM)*i) + (0.02 / TIMESTEPS_PER_ANNUM) * i
+    f = 100 + np.sin(((2*3.14)/TIMESTEPS_PER_ANNUM)*i) + (0.02 / TIMESTEPS_PER_ANNUM) * i
     spot = x + f
 
 
