@@ -2,6 +2,7 @@ import torch
 import numpy as np
 
 from config import (
+  MISSING_FISH_PENALTY_FACTOR,
   TIMESTEPS_PER_ANNUM,
   COST_SMOLT,
   COST_FEED,
@@ -29,6 +30,8 @@ class Facility:
     # Each individual tank is given as a list of floating point numbers. 
     # The facility state tank_fish becomes a list of lists of numbers.
     self.tank_fish = [[] for _ in range(self.N_TANKS)]
+
+    # Daily
     self.growth_table = [
       [30, 1.0257],
       [100, 1.0231],
@@ -65,6 +68,44 @@ class Facility:
       [5000, 1.0049],
       [5250, 1.0048]
       ]
+    
+    # Monthly
+    self.growth_table = [
+      [30, 2.1409704122894846],
+      [100, 1.9840039843125457],
+      [200, 1.84902780993551],
+      [300, 1.7485098723624994],
+      [400, 1.6679788716416568],
+      [500, 1.605198738393945],
+      [600, 1.5538666885933925],
+      [700, 1.5130514345310946],
+      [800, 1.4776427954943907],
+      [900, 1.4473184372772525],
+      [1000, 1.421805703928561],
+      [1100, 1.3967279635884098],
+      [1200, 1.3761569602494426],
+      [1300, 1.3599113224571873],
+      [1400, 1.3438511460111304],
+      [1500, 1.3279743858738762],
+      [1600, 1.3161859647801994],
+      [1700, 1.30449873120641],
+      [1800, 1.2929118462974065],
+      [1900, 1.285242594404863],
+      [2000, 1.2738211113433746],
+      [2250, 1.255003002347366],
+      [2500, 1.2401422768623613],
+      [2750, 1.2254517216244096],
+      [3000, 1.2109294544629676],
+      [3250, 1.2037308462295266],
+      [3500, 1.193010440738948],
+      [3750, 1.1859148405169895],
+      [4000, 1.1788600437492234],
+      [4250, 1.1718458238403355],
+      [4500, 1.1683538597289669],
+      [4750, 1.1614000828953421],
+      [5000, 1.1579382142799672],
+      [5250, 1.1544863217283907]
+    ]
 
   def harvest(self, population, to_harvest, lo, hi):
       """
@@ -123,9 +164,15 @@ class Facility:
     """
       Iterates through each tank's populations and applies the growth table (skretting) to the fish.
     """
+    lastbase = self.growth_table[-1][1] - 1
     for tank_i in range(len(self.tank_fish)):
       for fish_i in range(len(self.tank_fish[tank_i])):
           current = self.tank_fish[tank_i][fish_i]
+          if current > 5500:
+            rate = 1 + (lastbase * ( (2 * (8000 - current)) / 8000)**2)
+            self.tank_fish[tank_i][fish_i] *= rate
+            continue
+
           rate = 1.0257
           j = 0
           # Iterate through the growth table, comparing the current fish's size to growth table weight groups. 
@@ -147,16 +194,11 @@ class Facility:
       tank = self.tank_fish[i]
       for fish in tank:
 
-        
-        
-        
         # Increment the weight group
         out[i, 2 * int(fish // 1000)] += 1
 
-        
         # Increment the weight count
         out[i, 2 * int(fish // 1000) + 1] += fish
-
       
       # Use average weight rather than total weight
       for j in range(8):
@@ -166,7 +208,14 @@ class Facility:
 
     # TODO: Consider using shape (2*N_TANKS, 8), rather than (N_TANKS, 16)
     return out
-        
+  
+  def reward(self, harvest_weight, penalties, spot):
+    
+
+
+    # In the profit maximising case, reward spot price, penalise missing fish
+    return spot * harvest_weight - MISSING_FISH_PENALTY_FACTOR * penalties
+    
 
 
 

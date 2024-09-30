@@ -9,13 +9,17 @@ import matplotlib.pyplot as plt
 fac = Facility()
 
 
-fac.control([[8, 0, 0, 0, 0, 0, 0, 0]])
 
-for _ in range(200):
+fac.control([[1, 0, 0, 0, 0, 0, 0, 0]])
+
+xs = []
+xs.append(fac.tank_fish[0][0])
+for _ in range(100):
   fac.grow()
+  xs.append(fac.tank_fish[0][0])
 
-out = fac.model_input()
-print(out)
+print(fac.tank_fish)
 
-
+plt.plot(xs)
+plt.show()
 
