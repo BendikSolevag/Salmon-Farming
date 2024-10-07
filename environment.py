@@ -11,9 +11,10 @@ from config import (
   MAX_BIOMASS_PER_TANK,
   MAX_BIOMASS_FACILITY,
 
-  SPOT_THETA,
+  SPOT_KAPPA,
   SPOT_SIGMA, 
   SPOT_DT, 
+  F_PARAMS, 
   
 )
 
@@ -185,11 +186,14 @@ class Facility:
 
 
 
+def f(t, a0, b0, a1, theta):
+  omega = 2*np.pi/TIMESTEPS_PER_ANNUM,
+  return a0 + b0*t + a1*np.sin(omega*t + theta)
+
 def oup():
   i = 0
   x = 0
-  f = 100 + np.sin(0)
-  spot = x + f
+  spot = x + f(i, *F_PARAMS)
 
   while True:
     #print('x', x)
@@ -197,10 +201,7 @@ def oup():
     #print('spot', spot)
     yield spot
     i = i + 1
-    dx = -SPOT_THETA * x * SPOT_DT + SPOT_SIGMA * np.sqrt(SPOT_DT) * np.random.normal()
+    dx = -SPOT_KAPPA * x * SPOT_DT + SPOT_SIGMA * np.sqrt(SPOT_DT) * np.random.normal()
     x = x + dx
-    f = 100 + np.sin(((2*3.14)/TIMESTEPS_PER_ANNUM)*i) + (0.02 / TIMESTEPS_PER_ANNUM) * i
-    spot = x + f
-
-
+    spot = x + f(i, *F_PARAMS)
 
