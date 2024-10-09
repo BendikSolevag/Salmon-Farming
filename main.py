@@ -21,14 +21,20 @@ if __name__ == '__main__':
     print('weight', weight, 'penalties', penalties)
 
     # TODO: environment needs to control spot development. It is part of state.
-    reward = env.reward(weight, penalties)
+    reward = env.reward(state, penalties)
 
     print('reward', reward)
 
     updated_state = env.model_input()
     delta: torch.Tensor = reward - R_bar + value_net.forward(updated_state) - value_net.forward(state)
+
+    critic_loss = delta**2
+    actor_loss = -delta
+
+
+    print(delta)
     delta.backward()
-    
+
     policy_net.optimizer.step()
     value_net.optimizer.step()
     policy_net.optimizer.zero_grad()
