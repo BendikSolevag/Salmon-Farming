@@ -4,15 +4,18 @@ from torch import nn
 
 class PolicyNetwork(nn.Module):
 
-  def __init__(self, shape):
+  def __init__(self):
     super(PolicyNetwork, self).__init__()
     self.activation = nn.ReLU()
 
     self.shape = config.N_TANKS * 16
     self.n_layers = config.POLICY_NETWORK_LAYERS
     self.layers = nn.ModuleList([
-      nn.Linear(shape, shape) for _ in range(config.POLICY_NETWORK_LAYERS)
+      nn.Linear(self.shape, self.shape) for _ in range(config.POLICY_NETWORK_LAYERS)
     ])
+    print(self.shape / 2)
+    self.layers.append(nn.Linear(self.shape, int(self.shape / 2)))
+
     self.optimizer = torch.optim.Adam(self.parameters(), lr=config.LEARNING_RATE)
     self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     self.to(self.device)
@@ -27,16 +30,16 @@ class PolicyNetwork(nn.Module):
   
 
 class ValueNetwork(nn.Module):
-  def __init__(self, shape):
+  def __init__(self):
     super(ValueNetwork, self).__init__()
     self.activation = nn.ReLU()
 
     self.shape = config.N_TANKS * 16
     self.n_layers = config.POLICY_NETWORK_LAYERS
     self.layers = nn.ModuleList([
-      nn.Linear(shape, shape) for _ in range(config.POLICY_NETWORK_LAYERS - 1)
+      nn.Linear(self.shape, self.shape) for _ in range(config.POLICY_NETWORK_LAYERS - 1)
     ])
-    self.layers.append(nn.Linear(shape, 1))
+    self.layers.append(nn.Linear(self.shape, 1))
 
     self.optimizer = torch.optim.Adam(self.parameters(), lr=config.LEARNING_RATE)
     self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')

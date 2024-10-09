@@ -2,21 +2,19 @@ from tqdm import tqdm
 from agent import PolicyNetwork, ValueNetwork
 import config
 import torch
-
 from environment import Facility
-
 
 
 if __name__ == '__main__':
   R_bar = 0
   env = Facility()
   policy_net = PolicyNetwork()
-  value_net = ValueNetwork()
-  
+  value_net = ValueNetwork()  
 
   for _ in tqdm(range(52 * config.EPOCHS)):
     state = env.model_input()
     action = policy_net.forward(state)
+    print(action)
 
     weight, penalties = env.control(action)
 
@@ -24,9 +22,10 @@ if __name__ == '__main__':
     reward = env.reward(weight, penalties)
 
     updated_state = env.model_input()
-    delta = reward - R_bar + value_net.forward(updated_state) - value_net.forward(state)
+    delta: torch.Tensor = reward - R_bar + value_net.forward(updated_state) - value_net.forward(state)
+    delta.backward()
 
-    R_bar += config.LEARNING_RATE**(R_bar) * delta
+    R_bar += config.LEARNING_RATE * delta
 
 
     state = updated_state

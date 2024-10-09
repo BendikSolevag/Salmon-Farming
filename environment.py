@@ -27,6 +27,8 @@ class Facility:
     self.N_TANKS = torch.tensor(N_TANKS)
     self.MAX_BIOMASS_PER_TANK = torch.tensor(MAX_BIOMASS_PER_TANK)
     self.MAX_BIOMASS_FACILITY = torch.tensor(MAX_BIOMASS_FACILITY)
+    self.spot = oup()
+    self.price = 0
 
     # Each individual tank is given as a list of floating point numbers. 
     # The facility state tank_fish becomes a list of lists of numbers.
@@ -113,12 +115,15 @@ class Facility:
       tank_population = self.tank_fish[tank_i]
       for i in range(1, 7):
         # Identify the weight harvested for the given weight class, and number of penalties
-        weight, penalties = self.harvest(tank_population, tank_control[i], i*1000, (i+1)*1000)
+        to_harvest = int(tank_control[i])
+        weight, penalties = self.harvest(tank_population, to_harvest, i*1000, (i+1)*1000)
         harvest_weight += weight
         missing_fish_penalties += penalties
         
       # Add smolt to tank (We do this last to avoid iterating over the smolt unneccesarily)
-      tank_population += [30.0 for _ in range(tank_control[0])]
+      to_release = int(tank_control[0])
+      if (to_release > 0):
+        tank_population += [30.0 for _ in range(to_release)]
     
     return harvest_weight, missing_fish_penalties
 
@@ -145,6 +150,7 @@ class Facility:
           rate = self.growth_table[j][1]
           # Apply the identified growth rate to the fish
           self.tank_fish[tank_i][fish_i] *= rate
+    self.price = next(self.spot)
   
   
   def model_input(self):
@@ -170,21 +176,28 @@ class Facility:
           out[i, (2*j)+1] = out[i, (2*j)+1] / out[i, 2*j]
       
 
-    # TODO: Consider using shape (2*N_TANKS, 8), rather than (N_TANKS, 16)
+    # TODO: Flatten state variables to make more compatible with linear layers passing
     return out
   
 
-  def harvest_yield(self, harvest_weight, spot):
-    return harvest_weight * spot
+  def harvest_yield(self, harvest_weight):
+    return harvest_weight * self.price
 
   
-  def reward(self, harvest_weight, penalties, spot):
-    
-    # In the profit maximising case, reward spot price, penalise missing fish
-    return spot * harvest_weight - MISSING_FISH_PENALTY_FACTOR * penalties
-    
+  def reward(self, harvest_weight, penalties):
 
+    # Positive reward for selling fish
+    revenue = self.spot_price * harvest_weight
 
+    # Penalise reward when attempting to sell fish which does not exist
+    missing_fish_penalty = penalties * MISSING_FISH_PENALTY_FACTOR
+
+    # Penalise reward constantly to avoid network doing nothing (These are the fixed running costs. Wages, electricity, etc.)
+    do_nothing_bias = 1
+
+  
+    return revenue - missing_fish_penalty - do_nothing_bias
+    
 
 def f(t, a0, b0, a1, theta):
   omega = 2*np.pi/TIMESTEPS_PER_ANNUM,
