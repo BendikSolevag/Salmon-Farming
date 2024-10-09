@@ -30,6 +30,9 @@ class Facility:
     self.spot = oup()
     self.price = 0
 
+    self.plant_penalty_matrix = torch.zeros((N_TANKS, 8))
+    self.plant_penalty_matrix[:, 0] = COST_SMOLT
+
     # Each individual tank is given as a list of floating point numbers. 
     # The facility state tank_fish becomes a list of lists of numbers.
     self.tank_fish = [[] for _ in range(self.N_TANKS)]
@@ -159,6 +162,7 @@ class Facility:
       each column j denoting the number of fish in each weight class, and the average weight of each fish
     """
     out = torch.zeros((self.N_TANKS, 16))
+    out_rewardable = torch.zeros((self.N_TANKS, 8))
 
     for i in range(len(self.tank_fish)):
       tank = self.tank_fish[i]
@@ -169,24 +173,33 @@ class Facility:
 
         # Increment the weight count
         out[i, 2 * int(fish // 1000) + 1] += fish
+
+        if fish > 1000:
+          out[i, int(fish // 1000) + 1] += fish
       
       # Use average weight rather than total weight
       for j in range(8):
         if out[i, 2*j] != 0.0:
           out[i, (2*j)+1] = out[i, (2*j)+1] / out[i, 2*j]
+        if out_rewardable[i, j] != 0.0:
+          out_rewardable[i, j] = out_rewardable[i, j] / out[i, 2*j]
       
     # TODO: Flatten state variables to make more compatible with linear layers passing
-    return out
+    return out, out_rewardable
+
   
 
   def harvest_yield(self, harvest_weight):
     return harvest_weight * self.price
 
   
-  def reward(self, harvest_weight, penalties):
+  def reward(self, state_rewardable, action, penalties):
 
     # Positive reward for selling fish
-    revenue = self.price * harvest_weight
+    revenue = torch.sum(self.price * action * state_rewardable)
+
+    # Penalise planting
+    plant_penalty = torch.sum(action * self.plant_penalty_matrix)
 
     # Penalise reward when attempting to sell fish which does not exist
     missing_fish_penalty = penalties * MISSING_FISH_PENALTY_FACTOR
@@ -195,7 +208,7 @@ class Facility:
     do_nothing_bias = 1
 
 
-    return revenue - missing_fish_penalty - do_nothing_bias
+    return revenue - missing_fish_penalty - plant_penalty - do_nothing_bias
     
 
 def f(t, a0, b0, a1, theta):
