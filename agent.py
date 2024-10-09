@@ -1,4 +1,56 @@
+import config
 import torch
+from torch import nn
+
+class PolicyNetwork(nn.Module):
+
+  def __init__(self, shape):
+    super(PolicyNetwork, self).__init__()
+    self.activation = nn.ReLU()
+
+    self.shape = config.N_TANKS * 16
+    self.n_layers = config.POLICY_NETWORK_LAYERS
+    self.layers = nn.ModuleList([
+      nn.Linear(shape, shape) for _ in range(config.POLICY_NETWORK_LAYERS)
+    ])
+    self.optimizer = torch.optim.Adam(self.parameters(), lr=config.LEARNING_RATE)
+    self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    self.to(self.device)
+
+  def forward(self, state):
+    x = state
+    for i, layer in enumerate(self.layers):
+      x = layer(x)
+      if i < self.n_layers - 1:
+        x = self.activation(x)
+    return x
+  
+
+class ValueNetwork(nn.Module):
+  def __init__(self, shape):
+    super(ValueNetwork, self).__init__()
+    self.activation = nn.ReLU()
+
+    self.shape = config.N_TANKS * 16
+    self.n_layers = config.POLICY_NETWORK_LAYERS
+    self.layers = nn.ModuleList([
+      nn.Linear(shape, shape) for _ in range(config.POLICY_NETWORK_LAYERS - 1)
+    ])
+    self.layers.append(nn.Linear(shape, 1))
+
+    self.optimizer = torch.optim.Adam(self.parameters(), lr=config.LEARNING_RATE)
+    self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    self.to(self.device)
+
+  def forward(self, state):
+    x = state
+    for i, layer in enumerate(self.layers):
+      x = layer(x)
+      if i < self.n_layers - 1:
+        x = self.activation(x)
+    return x
+
+
 
 class MemoryBuffer:
   def __init__(self, state_action_shape, max_size):
