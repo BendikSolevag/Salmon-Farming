@@ -175,7 +175,6 @@ class Facility:
         if out[i, 2*j] != 0.0:
           out[i, (2*j)+1] = out[i, (2*j)+1] / out[i, 2*j]
       
-
     # TODO: Flatten state variables to make more compatible with linear layers passing
     return out
   
