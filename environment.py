@@ -187,7 +187,7 @@ class Facility:
   def reward(self, harvest_weight, penalties):
 
     # Positive reward for selling fish
-    revenue = self.spot_price * harvest_weight
+    revenue = self.price * harvest_weight
 
     # Penalise reward when attempting to sell fish which does not exist
     missing_fish_penalty = penalties * MISSING_FISH_PENALTY_FACTOR
@@ -195,7 +195,7 @@ class Facility:
     # Penalise reward constantly to avoid network doing nothing (These are the fixed running costs. Wages, electricity, etc.)
     do_nothing_bias = 1
 
-  
+
     return revenue - missing_fish_penalty - do_nothing_bias
     
 
