@@ -3,10 +3,12 @@ from agent import PolicyNetwork, ValueNetwork
 import config
 import torch
 from environment import Facility
-
+torch.autograd.set_detect_anomaly(True)
 
 if __name__ == '__main__':
-  R_bar = 0
+  learning_rate = torch.tensor(config.LEARNING_RATE)
+  R_bar = torch.tensor(0.0)
+
   env = Facility()
   policy_net = PolicyNetwork()
   value_net = ValueNetwork()  
@@ -14,21 +16,29 @@ if __name__ == '__main__':
   for i in tqdm(range(52 * config.EPOCHS)):
     print('iteration', i)
     
+    state, state_rewardable = env.model_input()
     action = policy_net.forward(state)
     weight, penalties = env.control(action)
-
-    # TODO: environment needs to control spot development. It is part of state.
     reward = env.reward(state_rewardable, action, penalties)
-
+    
     updated_state, updated_state_rewardable = env.model_input()
-    delta: torch.Tensor = reward - R_bar + value_net.forward(updated_state) - value_net.forward(state)
+
+
+
+    inter = reward - R_bar
+    print('inter', inter)
+    medi = value_net(updated_state)[0][0]
+    print('medi', medi)
+    ate = value_net.forward(state)[0][0]
+    print('ate', ate)
+    delta = inter + medi - ate
+    print('delta', delta)
 
     critic_loss = delta**2
     actor_loss = -delta
-
-
-    print(delta)
-    delta.backward(retain_graph=True)
+    combined = actor_loss + critic_loss
+    print(combined)
+    combined.backward(retain_graph=True)
 
     policy_net.optimizer.step()
     value_net.optimizer.step()
@@ -36,10 +46,12 @@ if __name__ == '__main__':
     value_net.optimizer.zero_grad()
 
 
-    R_bar += config.LEARNING_RATE * delta
 
-    state = updated_state
-    state_rewardable = updated_state_rewardable
+    print('learning rate', learning_rate)
+    print('delta', delta.item())
+    R_bar += learning_rate * delta
+
+    
 
 
 

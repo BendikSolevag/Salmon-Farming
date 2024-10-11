@@ -194,7 +194,6 @@ class Facility:
 
   
   def reward(self, state_rewardable, action, penalties):
-
     # Positive reward for selling fish
     revenue = torch.sum(self.price * action * state_rewardable)
 
@@ -206,7 +205,6 @@ class Facility:
 
     # Penalise reward constantly to avoid network doing nothing (These are the fixed running costs. Wages, electricity, etc.)
     do_nothing_bias = 1
-
 
     return revenue - missing_fish_penalty - plant_penalty - do_nothing_bias
     
