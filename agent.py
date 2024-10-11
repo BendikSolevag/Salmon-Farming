@@ -2,6 +2,7 @@ import config
 import torch
 from torch import nn
 
+
 class PolicyNetwork(nn.Module):
 
   def __init__(self):
@@ -51,7 +52,10 @@ class ValueNetwork(nn.Module):
       x = layer(x)
       if i < self.n_layers - 1:
         x = self.activation(x)
-    return x
+    
+    # Output should be scalar, not 2d matrix
+    output = x[0][0]
+    return output
 
 
 
