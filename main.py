@@ -42,4 +42,4 @@ if __name__ == '__main__':
 
     print('learning rate', learning_rate)
     print('delta', delta.item())
-    R_bar = R_bar + learning_rate * delta
+    R_bar = (R_bar + learning_rate * delta).detach()
