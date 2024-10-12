@@ -161,6 +161,7 @@ class Facility:
     @returns Tensor with size (N_TANKS, 16), each row i denoting an individual tank, 
       each column j denoting the number of fish in each weight class, and the average weight of each fish
     """
+    #TODO: vurder: Legg til std i model_input
     out = torch.zeros((self.N_TANKS, 16))
     out_rewardable = torch.zeros((self.N_TANKS, 8))
 
@@ -175,7 +176,7 @@ class Facility:
         out[i, 2 * int(fish // 1000) + 1] += fish
 
         if fish > 1000:
-          out[i, int(fish // 1000) + 1] += fish
+          out_rewardable[i, int(fish // 1000) + 1] += fish
       
       # Use average weight rather than total weight
       for j in range(8):
