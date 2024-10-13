@@ -214,7 +214,7 @@ class Facility:
     
 
 def f(t, a0, b0, a1, theta):
-  omega = 2*np.pi/TIMESTEPS_PER_ANNUM,
+  omega = 2*np.pi/TIMESTEPS_PER_ANNUM
   return a0 + b0*t + a1*np.sin(omega*t + theta)
 
 def oup():

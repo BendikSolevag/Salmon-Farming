@@ -53,6 +53,6 @@ if __name__ == '__main__':
     value_net.optimizer.step()
     policy_net.optimizer.zero_grad()
     value_net.optimizer.zero_grad()
-
+    env.grow()
     print('learning rate', learning_rate)
     print('delta', delta.item())
