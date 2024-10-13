@@ -75,30 +75,20 @@ class Facility:
       [5250, 1.1544863217283907]
     ]
 
-  def harvest(self, population, to_harvest, lo, hi):
+  def harvest(self, population, to_harvest):
       """
       Iterates over fish population in a single tank. 
-      Harvests given number of fish from given weight class. 
-      Returns weight of fish harvested, and potential missing fish.
+      Returns weight of fish harvested.
       """
-      harvest_weight = 0
-      identified = 0
-      fish_i = 0
-      # Iterate through the population until we have harvested the specified number of fish
-      while identified < to_harvest and fish_i < len(population):
-        fish = population[fish_i]
-        if fish >= lo and fish < hi:
-          # If the evaluated fish fits the size requirements, add its weight to the counter and remove the fish from the population.
-          identified += 1
-          harvest_weight += fish
-          population.pop(fish_i)
-          continue
-        fish_i += 1
-      
-      # If the control matrix specifies to harvest more fish than are available in the population, this should penalize the reward function.
-      penalties = to_harvest - identified
-      return harvest_weight, penalties
-  
+      if to_harvest > len(population):
+        harvestables = population
+        population = []
+        return harvestables
+
+      harvestables = population[:to_harvest]
+      population = population[to_harvest:]
+      return harvestables
+        
 
   def control(self, control_matrix):
     """
@@ -108,27 +98,62 @@ class Facility:
         First position determines how many smolt to release into the tank. 
         Other positions determines how many fish to harvest from each weight class.
     """
-    harvest_weight = 0
-    missing_fish_penalties = 0
+    
+    missing_fish_penalties = torch.tensor(0)
+    harvestables_global = []
+    
 
     for tank_i in range(len(control_matrix)):
       tank_control = control_matrix[tank_i]
 
       # Iterate over weight classes. 1kg+, 2kg+, 3kg+, 4kg+, 5kg+, 6kg+
       tank_population = self.tank_fish[tank_i]
-      for i in range(1, 7):
-        # Identify the weight harvested for the given weight class, and number of penalties
-        to_harvest = int(tank_control[i])
-        weight, penalties = self.harvest(tank_population, to_harvest, i*1000, (i+1)*1000)
-        harvest_weight += weight
-        missing_fish_penalties += penalties
+      to_harvest = int(tank_control[1])
+
+      if to_harvest > len(tank_population):
+        missing_fish_penalties += torch.tensor(1)
+      
+      
+      harvestables = self.harvest(tank_population, to_harvest)
+      harvestables_global.append(harvestables)
         
       # Add smolt to tank (We do this last to avoid iterating over the smolt unneccesarily)
       to_release = int(tank_control[0])
       if (to_release > 0):
         tank_population += [30.0 for _ in range(to_release)]
+
+    maxlength = len(max(harvestables_global, key=len))
+    usable = torch.zeros((len(control_matrix), max(maxlength, 1)))
+    if maxlength > 0:
+      for i in range(len(control_matrix)):
+        for j in range(len(harvestables_global[i])):
+          usable[i, j] = harvestables_global[i][j]
     
-    return harvest_weight, missing_fish_penalties
+
+    print(usable)
+    mean_tank = torch.mean(usable, 1)
+    
+
+    
+    revenue_per_tank = mean_tank * control_matrix[:, 1]
+    
+
+    # Positive reward for selling fish
+    revenue = torch.sum(revenue_per_tank) 
+
+    # Penalise attempting to harvest nonexistent fish
+    missing_fish_penalty = missing_fish_penalties * torch.tensor(MISSING_FISH_PENALTY_FACTOR)
+
+    # Penalise cost of planting
+    plant_penalty = torch.sum(control_matrix[:, 0]) * torch.tensor(COST_SMOLT)
+
+    # Penalise doing nothing to enoucrage planting
+    do_nothing_bias = torch.tensor(1)
+
+    
+    
+    
+    return revenue - missing_fish_penalty - plant_penalty - do_nothing_bias
 
 
 
@@ -163,51 +188,29 @@ class Facility:
     """
     #TODO: vurder: Legg til std i model_input
     out = torch.zeros((self.N_TANKS, 16))
-    out_rewardable = torch.zeros((self.N_TANKS, 8))
-
     for i in range(len(self.tank_fish)):
       tank = self.tank_fish[i]
       for fish in tank:
-
         # Increment the weight group
         out[i, 2 * int(fish // 1000)] += 1
 
         # Increment the weight count
         out[i, 2 * int(fish // 1000) + 1] += fish
 
-        if fish > 1000:
-          out_rewardable[i, int(fish // 1000) + 1] += fish
       
       # Use average weight rather than total weight
       for j in range(8):
         if out[i, 2*j] != 0.0:
           out[i, (2*j)+1] = out[i, (2*j)+1] / out[i, 2*j]
-        if out_rewardable[i, j] != 0.0:
-          out_rewardable[i, j] = out_rewardable[i, j] / out[i, 2*j]
-      
+
     # TODO: Flatten state variables to make more compatible with linear layers passing
-    return out, out_rewardable
+    return out
 
   
 
   def harvest_yield(self, harvest_weight):
     return harvest_weight * self.price
 
-  
-  def reward(self, state_rewardable, action, penalties):
-    # Positive reward for selling fish
-    revenue = torch.sum(self.price * action * state_rewardable)
-
-    # Penalise planting
-    plant_penalty = torch.sum(action * self.plant_penalty_matrix)
-
-    # Penalise reward when attempting to sell fish which does not exist
-    missing_fish_penalty = penalties * MISSING_FISH_PENALTY_FACTOR
-
-    # Penalise reward constantly to avoid network doing nothing (These are the fixed running costs. Wages, electricity, etc.)
-    do_nothing_bias = 1
-
-    return revenue - missing_fish_penalty - plant_penalty - do_nothing_bias
     
 
 def f(t, a0, b0, a1, theta):

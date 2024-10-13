@@ -12,24 +12,38 @@ if __name__ == '__main__':
   env = Facility()
   policy_net = PolicyNetwork()
   value_net = ValueNetwork()  
-  state, state_rewardable = env.model_input()
+  state = env.model_input()
   for i in tqdm(range(52 * config.EPOCHS)):
     print('iteration', i)
     
-    state, state_rewardable = env.model_input()
-    action = policy_net.forward(state)
-    weight, penalties = env.control(action)
+    state = env.model_input()
+    out = policy_net.forward(state)[0]
+    plant_mu, plant_sigma, harvest_mu, harvest_sigma = out[0], torch.exp(out[1]), out[2], torch.exp(out[3])
 
-    reward = env.reward(state_rewardable, action, penalties)
-  
-    updated_state, updated_state_rewardable = env.model_input()
+    plant_probs = torch.distributions.Normal(plant_mu, plant_sigma)
+    plant_action = plant_probs.sample()
+    plant_log_probs = plant_probs.log_prob(plant_action)
+    harvest_probs = torch.distributions.Normal(harvest_mu, harvest_sigma)
+    harvest_action = harvest_probs.sample()
+    harvest_log_probs = harvest_probs.log_prob(harvest_action)
+
+    
+    action = torch.tensor([[plant_action, harvest_action]])
+
+
+    reward = env.control(action)
+    updated_state = env.model_input()
+
+
 
     delta = reward - R_bar + value_net(updated_state) - value_net.forward(state)
-    R_bar = (R_bar + learning_rate * delta).detach()
+
     
+    R_bar = (R_bar + learning_rate * delta).detach()
+
 
     critic_loss = delta**2
-    actor_loss = -delta
+    actor_loss = -(harvest_log_probs + plant_log_probs) * delta
     
     combined = actor_loss + critic_loss
     combined.backward()
