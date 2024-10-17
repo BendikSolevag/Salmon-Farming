@@ -31,7 +31,7 @@ class Facility:
 
     self.MAX_BIOMASS_FACILITY = torch.tensor(MAX_BIOMASS_FACILITY)
     self.spot = oup()
-    self.price = 0
+    self.price = next(self.spot)
 
     self.plant_penalty_matrix = torch.zeros((N_TANKS, 8))
     self.plant_penalty_matrix[:, 0] = COST_SMOLT
@@ -170,7 +170,8 @@ class Facility:
     """
     #TODO: Legg til spotpris i model_input
     #TODO: vurder: Legg til std i model_input
-    out = torch.zeros((self.N_TANKS, 16))
+    out = torch.zeros((self.N_TANKS, 17))
+    out[:, -1] = self.price
     for i in range(len(self.tank_fish)):
       tank = self.tank_fish[i]
       for fish in tank:

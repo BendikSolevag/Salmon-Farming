@@ -16,6 +16,7 @@ if __name__ == '__main__':
   for i in tqdm(range(1000)):
     print('\n\ntank fish', len(env.tank_fish[0]))
     print('tank weight', sum(env.tank_fish[0]))
+    print(state)
     
     out = policy_net.forward(state)[0]
     plant_mu, harvest_mu = out[0], out[1]
