@@ -13,11 +13,14 @@ if __name__ == '__main__':
   policy_net = PolicyNetwork()
   value_net = ValueNetwork()  
   state = env.model_input()
-  for i in tqdm(range(30)):
-    print('tank', env.tank_fish)
+  for i in tqdm(range(1000)):
+    print('\n\ntank fish', len(env.tank_fish[0]))
+    print('tank weight', sum(env.tank_fish[0]))
     
     out = policy_net.forward(state)[0]
     plant_mu, plant_sigma, harvest_mu, harvest_sigma = out[0], torch.exp(out[1]), out[2], torch.exp(out[3])
+    print('plant', round(plant_mu.item(), 2), round(plant_sigma.item(), 2))
+    print('harvest', round(harvest_mu.item(), 2), round(harvest_sigma.item(), 2))
     plant_probs = torch.distributions.Normal(plant_mu, plant_sigma)
     plant_action = plant_probs.sample()
     plant_log_probs = plant_probs.log_prob(plant_action)
@@ -29,8 +32,10 @@ if __name__ == '__main__':
     reward = env.control(action)
     updated_state = env.model_input()
     
+    print('reward', reward)
     delta = reward - R_bar + value_net(updated_state) - value_net.forward(state)    
-    R_bar = (R_bar + learning_rate * delta).detach()
+    
+    R_bar = ((1 - learning_rate) * R_bar + learning_rate * delta).detach()
     critic_loss = delta**2
     actor_loss = -(harvest_log_probs + plant_log_probs) * delta
     combined = actor_loss + critic_loss
@@ -43,4 +48,6 @@ if __name__ == '__main__':
     
     env.grow()
     state = updated_state
+
+
 

@@ -146,6 +146,11 @@ class Facility:
     do_nothing_bias = torch.tensor(1)
 
     
+    print('revenue', revenue)
+    print('plant penalty', plant_penalty)
+    print('tank volume penalty', per_tank_penalty)
+    print('total volume penalty', total_penalty)
+    
     
     reward = \
       revenue \
