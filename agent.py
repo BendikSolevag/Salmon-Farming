@@ -14,7 +14,7 @@ class PolicyNetwork(nn.Module):
     self.layers = nn.ModuleList([
       nn.Linear(self.shape, self.shape) for _ in range(config.POLICY_NETWORK_LAYERS)
     ])
-    self.layers.append(nn.Linear(self.shape, config.N_TANKS * 4))
+    self.layers.append(nn.Linear(self.shape, config.N_TANKS * 2))
 
     self.optimizer = torch.optim.Adam(self.parameters(), lr=config.LEARNING_RATE)
     self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')

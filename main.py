@@ -18,13 +18,13 @@ if __name__ == '__main__':
     print('tank weight', sum(env.tank_fish[0]))
     
     out = policy_net.forward(state)[0]
-    plant_mu, plant_sigma, harvest_mu, harvest_sigma = out[0], torch.exp(out[1]), out[2], torch.exp(out[3])
-    print('plant', round(plant_mu.item(), 2), round(plant_sigma.item(), 2))
-    print('harvest', round(harvest_mu.item(), 2), round(harvest_sigma.item(), 2))
-    plant_probs = torch.distributions.Normal(plant_mu, plant_sigma)
+    plant_mu, harvest_mu = out[0], out[1]
+    print('plant', round(plant_mu.item(), 2))
+    print('harvest', round(harvest_mu.item(), 2))
+    plant_probs = torch.distributions.Normal(plant_mu, 1)
     plant_action = plant_probs.sample()
     plant_log_probs = plant_probs.log_prob(plant_action)
-    harvest_probs = torch.distributions.Normal(harvest_mu, harvest_sigma)
+    harvest_probs = torch.distributions.Normal(harvest_mu, 1)
     harvest_action = harvest_probs.sample()
     harvest_log_probs = harvest_probs.log_prob(harvest_action)
 

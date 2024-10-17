@@ -42,40 +42,40 @@ class Facility:
     
     # Weekly
     self.growth_table = [
-      (30, 1.1943799068682943),
-      (100, 1.1733473387664075),
-      (200, 1.1542152374986576),
-      (300, 1.1392592253424174),
-      (400, 1.1267938307200838),
-      (500, 1.1167519571702413),
-      (600, 1.1083149969537),
-      (700, 1.1014527241658891),
-      (800, 1.095383532071859),
-      (900, 1.0900965254967199),
-      (1000, 1.0855822295154363),
-      (1100, 1.081083966926533),
-      (1200, 1.0773476282394827),
-      (1300, 1.0743665318159294),
-      (1400, 1.0713925086772824),
-      (1500, 1.0684255448322806),
-      (1600, 1.066204946205858),
-      (1700, 1.0639883046889786),
-      (1800, 1.0617756144035877),
-      (1900, 1.060302679775683),
-      (2000, 1.0580965618327276),
-      (2250, 1.0544284414614271),
-      (2500, 1.0515017981458057),
-      (2750, 1.048582120260834),
-      (3000, 1.045669393986223),
-      (3250, 1.0442156333899617),
-      (3500, 1.0420382408261932),
-      (3750, 1.0405888088275994),
-      (4000, 1.0391411052580715),
-      (4250, 1.0376951283996605),
-      (4500, 1.036972786950638),
-      (4750, 1.0355293969407338),
-      (5000, 1.0348083479512196),
-      (5250, 1.03408772935305)
+      (0.03, 1.1943799068682943),
+      (0.1, 1.1733473387664075),
+      (0.2, 1.1542152374986576),
+      (0.3, 1.1392592253424174),
+      (0.4, 1.1267938307200838),
+      (0.5, 1.1167519571702413),
+      (0.6, 1.1083149969537),
+      (0.7, 1.1014527241658891),
+      (0.8, 1.095383532071859),
+      (0.9, 1.0900965254967199),
+      (1.0, 1.0855822295154363),
+      (1.1, 1.081083966926533),
+      (1.2, 1.0773476282394827),
+      (1.3, 1.0743665318159294),
+      (1.4, 1.0713925086772824),
+      (1.5, 1.0684255448322806),
+      (1.6, 1.066204946205858),
+      (1.7, 1.0639883046889786),
+      (1.8, 1.0617756144035877),
+      (1.9, 1.060302679775683),
+      (2.0, 1.0580965618327276),
+      (2.25, 1.0544284414614271),
+      (2.5, 1.0515017981458057),
+      (2.75, 1.048582120260834),
+      (3.0, 1.045669393986223),
+      (3.25, 1.0442156333899617),
+      (3.5, 1.0420382408261932),
+      (3.75, 1.0405888088275994),
+      (4.0, 1.0391411052580715),
+      (4.25, 1.0376951283996605),
+      (4.5, 1.036972786950638),
+      (4.75, 1.0355293969407338),
+      (5.0, 1.0348083479512196),
+      (5.25, 1.03408772935305)
       ]
 
 
@@ -118,7 +118,7 @@ class Facility:
       # Add smolt to tank (We do this last to avoid iterating over the smolt unneccesarily)
       to_release = int(tank_control[0])
       if (to_release > 0):
-        tank_population += [30.0 for _ in range(to_release)]
+        tank_population += [0.03 for _ in range(to_release)]
 
     maxlength = len(max(harvestables_global, key=len))
     usable = torch.zeros((len(control_matrix), max(maxlength, 1)))
@@ -128,8 +128,10 @@ class Facility:
           usable[i, j] = harvestables_global[i][j]
 
     # Calculate revenue from selling fish at current spot price
-    mean_tank = torch.mean(usable, 1)      
+    mean_tank = torch.mean(usable, 1)
+    print('mean tank', mean_tank, 'control matrix', control_matrix)
     revenue_per_tank = mean_tank * control_matrix[:, 1]
+    print('revenue per tank', revenue_per_tank)
     revenue = self.price * torch.sum(revenue_per_tank) 
 
 
@@ -150,7 +152,7 @@ class Facility:
     print('plant penalty', plant_penalty)
     print('tank volume penalty', per_tank_penalty)
     print('total volume penalty', total_penalty)
-    
+
     
     reward = \
       revenue \
@@ -159,10 +161,6 @@ class Facility:
       - total_penalty \
       - do_nothing_bias
     return reward
-  
-
-
-
   
   
   def model_input(self):
@@ -216,8 +214,8 @@ def grow_tank(tank: list[float], growth_table: list[(int, float)]):
   lastbase = growth_table[-1][1] - 1
   for fish_i in range(len(tank)):
     current = tank[fish_i]
-    if current > 5500:
-      rate = 1 + (lastbase * ( (2 * (7500 - current)) / 7500)**2)
+    if current > 5.500:
+      rate = 1 + (lastbase * ( (2 * (7.500 - current)) / 7.500)**2)
       tank[fish_i] *= rate
       continue
 
