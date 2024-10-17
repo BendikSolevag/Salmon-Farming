@@ -128,15 +128,11 @@ class Facility:
       for i in range(len(control_matrix)):
         for j in range(len(harvestables_global[i])):
           usable[i, j] = harvestables_global[i][j]
-    
-
-    print(usable)
-    mean_tank = torch.mean(usable, 1)
-    
-
-    
+      
+  
+  
+    mean_tank = torch.mean(usable, 1)      
     revenue_per_tank = mean_tank * control_matrix[:, 1]
-    
 
     # Positive reward for selling fish
     revenue = torch.sum(revenue_per_tank) 
@@ -151,9 +147,8 @@ class Facility:
     do_nothing_bias = torch.tensor(1)
 
     
-    
-    
-    return revenue - missing_fish_penalty - plant_penalty - do_nothing_bias
+    reward = revenue - missing_fish_penalty - plant_penalty - do_nothing_bias
+    return reward
 
 
 
@@ -186,6 +181,7 @@ class Facility:
     @returns Tensor with size (N_TANKS, 16), each row i denoting an individual tank, 
       each column j denoting the number of fish in each weight class, and the average weight of each fish
     """
+    #TODO: Legg til spotpris i model_input
     #TODO: vurder: Legg til std i model_input
     out = torch.zeros((self.N_TANKS, 16))
     for i in range(len(self.tank_fish)):

@@ -15,6 +15,7 @@ if __name__ == '__main__':
   state = env.model_input()
   for i in tqdm(range(30)):
     print('tank', env.tank_fish)
+    
     out = policy_net.forward(state)[0]
     plant_mu, plant_sigma, harvest_mu, harvest_sigma = out[0], torch.exp(out[1]), out[2], torch.exp(out[3])
     plant_probs = torch.distributions.Normal(plant_mu, plant_sigma)
