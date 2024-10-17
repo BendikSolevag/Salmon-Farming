@@ -25,7 +25,9 @@ class Facility:
     self.COST_FEED = torch.tensor(COST_FEED)
     self.COST_FIXED_HARVEST = torch.tensor(COST_FIXED_HARVEST)
     self.N_TANKS = torch.tensor(N_TANKS)
-    self.MAX_BIOMASS_PER_TANK = torch.tensor(MAX_BIOMASS_PER_TANK)
+
+    self.MAX_BIOMASS_PER_TANK = torch.tensor([MAX_BIOMASS_PER_TANK for _ in range(N_TANKS)])
+
     self.MAX_BIOMASS_FACILITY = torch.tensor(MAX_BIOMASS_FACILITY)
     self.spot = oup()
     self.price = 0
@@ -99,21 +101,15 @@ class Facility:
         First position determines how many smolt to release into the tank. 
         Other positions determines how many fish to harvest from each weight class.
     """
-    
-    missing_fish_penalties = torch.tensor(0)
+
     harvestables_global = []
     
-
     for tank_i in range(len(control_matrix)):
       tank_control = control_matrix[tank_i]
 
       # Iterate over weight classes. 1kg+, 2kg+, 3kg+, 4kg+, 5kg+, 6kg+
       tank_population = self.tank_fish[tank_i]
       to_harvest = int(tank_control[1])
-
-      if to_harvest > len(tank_population):
-        missing_fish_penalties += torch.tensor(1)
-      
       
       harvestables = self.harvest(tank_population, to_harvest)
       harvestables_global.append(harvestables)
@@ -129,17 +125,18 @@ class Facility:
       for i in range(len(control_matrix)):
         for j in range(len(harvestables_global[i])):
           usable[i, j] = harvestables_global[i][j]
-      
-  
-  
+
+    # Calculate revenue from selling fish at current spot price
     mean_tank = torch.mean(usable, 1)      
     revenue_per_tank = mean_tank * control_matrix[:, 1]
+    revenue = self.price * torch.sum(revenue_per_tank) 
 
-    # Positive reward for selling fish
-    revenue = torch.sum(revenue_per_tank) 
 
-    # Penalise attempting to harvest nonexistent fish
-    missing_fish_penalty = missing_fish_penalties * torch.tensor(MISSING_FISH_PENALTY_FACTOR)
+    # Calculate penalty from based on biomass constraints
+    resulting_tank_weights = torch.tensor([sum(tank) for tank in self.tank_fish])
+    resulting_total_weight = torch.sum(resulting_tank_weights)
+    per_tank_penalty = torch.sum(torch.clamp((resulting_tank_weights - self.MAX_BIOMASS_PER_TANK), 0, None))
+    total_penalty = torch.clamp(resulting_total_weight - self.MAX_BIOMASS_FACILITY, 0, None)
 
     # Penalise cost of planting
     plant_penalty = torch.sum(control_matrix[:, 0]) * torch.tensor(COST_SMOLT)
@@ -148,7 +145,12 @@ class Facility:
     do_nothing_bias = torch.tensor(1)
 
     
-    reward = revenue - missing_fish_penalty - plant_penalty - do_nothing_bias
+    
+    reward = revenue \
+      - plant_penalty  \
+      - per_tank_penalty \
+      - total_penalty \
+      - do_nothing_bias
     return reward
 
 
@@ -220,9 +222,6 @@ def oup():
   spot = x + f(i, *F_PARAMS)
 
   while True:
-    #print('x', x)
-    #print('f', f)
-    #print('spot', spot)
     yield spot
     i = i + 1
     dx = -SPOT_KAPPA * x * SPOT_DT + SPOT_SIGMA * np.sqrt(SPOT_DT) * np.random.normal()
