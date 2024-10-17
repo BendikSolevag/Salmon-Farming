@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import threading
 
 from config import (
   MISSING_FISH_PENALTY_FACTOR,
@@ -41,40 +42,40 @@ class Facility:
     
     # Weekly
     self.growth_table = [
-      [30, 1.1943799068682943]
-      [100, 1.1733473387664075]
-      [200, 1.1542152374986576]
-      [300, 1.1392592253424174]
-      [400, 1.1267938307200838]
-      [500, 1.1167519571702413]
-      [600, 1.1083149969537]
-      [700, 1.1014527241658891]
-      [800, 1.095383532071859]
-      [900, 1.0900965254967199]
-      [1000, 1.0855822295154363]
-      [1100, 1.081083966926533]
-      [1200, 1.0773476282394827]
-      [1300, 1.0743665318159294]
-      [1400, 1.0713925086772824]
-      [1500, 1.0684255448322806]
-      [1600, 1.066204946205858]
-      [1700, 1.0639883046889786]
-      [1800, 1.0617756144035877]
-      [1900, 1.060302679775683]
-      [2000, 1.0580965618327276]
-      [2250, 1.0544284414614271]
-      [2500, 1.0515017981458057]
-      [2750, 1.048582120260834]
-      [3000, 1.045669393986223]
-      [3250, 1.0442156333899617]
-      [3500, 1.0420382408261932]
-      [3750, 1.0405888088275994]
-      [4000, 1.0391411052580715]
-      [4250, 1.0376951283996605]
-      [4500, 1.036972786950638]
-      [4750, 1.0355293969407338]
-      [5000, 1.0348083479512196]
-      [5250, 1.03408772935305]
+      (30, 1.1943799068682943),
+      (100, 1.1733473387664075),
+      (200, 1.1542152374986576),
+      (300, 1.1392592253424174),
+      (400, 1.1267938307200838),
+      (500, 1.1167519571702413),
+      (600, 1.1083149969537),
+      (700, 1.1014527241658891),
+      (800, 1.095383532071859),
+      (900, 1.0900965254967199),
+      (1000, 1.0855822295154363),
+      (1100, 1.081083966926533),
+      (1200, 1.0773476282394827),
+      (1300, 1.0743665318159294),
+      (1400, 1.0713925086772824),
+      (1500, 1.0684255448322806),
+      (1600, 1.066204946205858),
+      (1700, 1.0639883046889786),
+      (1800, 1.0617756144035877),
+      (1900, 1.060302679775683),
+      (2000, 1.0580965618327276),
+      (2250, 1.0544284414614271),
+      (2500, 1.0515017981458057),
+      (2750, 1.048582120260834),
+      (3000, 1.045669393986223),
+      (3250, 1.0442156333899617),
+      (3500, 1.0420382408261932),
+      (3750, 1.0405888088275994),
+      (4000, 1.0391411052580715),
+      (4250, 1.0376951283996605),
+      (4500, 1.036972786950638),
+      (4750, 1.0355293969407338),
+      (5000, 1.0348083479512196),
+      (5250, 1.03408772935305)
       ]
 
 
@@ -146,37 +147,17 @@ class Facility:
 
     
     
-    reward = revenue \
+    reward = \
+      revenue \
       - plant_penalty  \
       - per_tank_penalty \
       - total_penalty \
       - do_nothing_bias
     return reward
+  
 
 
 
-  def grow(self):
-    """
-      Iterates through each tank's populations and applies the growth table (skretting) to the fish.
-    """
-    lastbase = self.growth_table[-1][1] - 1
-    for tank_i in range(len(self.tank_fish)):
-      for fish_i in range(len(self.tank_fish[tank_i])):
-          current = self.tank_fish[tank_i][fish_i]
-          if current > 5500:
-            rate = 1 + (lastbase * ( (2 * (7500 - current)) / 7500)**2)
-            self.tank_fish[tank_i][fish_i] *= rate
-            continue
-
-          rate = 1.0257
-          j = 0
-          # Iterate through the growth table, comparing the current fish's size to growth table weight groups. 
-          while j < len(self.growth_table) - 1 and current > self.growth_table[j][0]:
-            j += 1
-          rate = self.growth_table[j][1]
-          # Apply the identified growth rate to the fish
-          self.tank_fish[tank_i][fish_i] *= rate
-    self.price = next(self.spot)
   
   
   def model_input(self):
@@ -209,6 +190,43 @@ class Facility:
 
   def harvest_yield(self, harvest_weight):
     return harvest_weight * self.price
+
+
+  def grow(self):
+    """
+      Iterates through each tank's populations and applies the growth table (skretting) to the fish.
+    """
+    threads = []
+    for tank_i in range(len(self.tank_fish)):
+      t = threading.Thread(target=grow_tank, args=(self.tank_fish[tank_i], self.growth_table))
+      t.start()
+      threads.append(t)
+    for thread in threads:
+      thread.join()
+      
+    self.price = next(self.spot)
+
+
+def grow_tank(tank: list[float], growth_table: list[(int, float)]):
+  lastbase = growth_table[-1][1] - 1
+  for fish_i in range(len(tank)):
+    current = tank[fish_i]
+    if current > 5500:
+      rate = 1 + (lastbase * ( (2 * (7500 - current)) / 7500)**2)
+      tank[fish_i] *= rate
+      continue
+
+    rate = 1.0257
+    j = 0
+    # Iterate through the growth table, comparing the current fish's size to growth table weight groups. 
+    while j < len(growth_table) - 1 and current > growth_table[j][0]:
+      j += 1
+    rate = growth_table[j][1]
+    # Apply the identified growth rate to the fish
+    tank[fish_i] *= rate
+
+
+
 
     
 
