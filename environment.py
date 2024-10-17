@@ -37,7 +37,7 @@ class Facility:
     # The facility state tank_fish becomes a list of lists of numbers.
     self.tank_fish = [[] for _ in range(self.N_TANKS)]
     
-    # Monthly
+    # Weekly
     self.growth_table = [
       [30, 1.1943799068682943]
       [100, 1.1733473387664075]
