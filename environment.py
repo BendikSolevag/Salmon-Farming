@@ -146,6 +146,13 @@ class Facility:
     plant_matrix = control_matrix[:, 0]
     plant_matrix = torch.where(plant_matrix > 0, plant_matrix, 0.)
     plant_penalty = torch.sum(plant_matrix) * torch.tensor(COST_SMOLT)
+
+
+    # Fixed cost due to harvesting
+    harvest_penalty = control_matrix[:, 1]
+    harvest_penalty = torch.sum(torch.where(control_matrix > 1, 1, 0.))
+    harvest_penalty = harvest_penalty * self.COST_FIXED_HARVEST
+
     
 
     # Penalise doing nothing to enoucrage planting
@@ -160,6 +167,7 @@ class Facility:
     
     reward = \
       revenue \
+      - harvest_penalty \
       - per_tank_penalty \
       - total_penalty \
       - do_nothing_bias

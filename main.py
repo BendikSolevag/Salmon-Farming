@@ -37,7 +37,7 @@ def train():
     
     updated_state = env.model_input()
     
-    #print('reward', reward)
+    print('reward', reward)
     delta = reward - R_bar + value_net(updated_state) - value_net.forward(state)    
     
     R_bar = ((1 - learning_rate) * R_bar + learning_rate * delta).detach()
