@@ -9,7 +9,7 @@ class PolicyNetwork(nn.Module):
     super(PolicyNetwork, self).__init__()
     self.activation = nn.ReLU()
 
-    self.shape = config.N_TANKS * 16
+    self.shape = config.N_TANKS * 16 + 1
     self.n_layers = config.POLICY_NETWORK_LAYERS
     self.layers = nn.ModuleList([
       nn.Linear(self.shape, self.shape) for _ in range(config.POLICY_NETWORK_LAYERS)
@@ -34,7 +34,7 @@ class ValueNetwork(nn.Module):
     super(ValueNetwork, self).__init__()
     self.activation = nn.ReLU()
 
-    self.shape = config.N_TANKS * 16
+    self.shape = config.N_TANKS * 16 + 1
     self.n_layers = config.POLICY_NETWORK_LAYERS
     self.layers = nn.ModuleList([
       nn.Linear(self.shape, self.shape) for _ in range(config.POLICY_NETWORK_LAYERS - 1)

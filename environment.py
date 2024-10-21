@@ -87,11 +87,11 @@ class Facility:
       if to_harvest > len(population):
         harvestables = population
         population = []
-        return harvestables
+        return harvestables, population
 
       harvestables = population[:to_harvest]
       population = population[to_harvest:]
-      return harvestables
+      return harvestables, population
         
 
   def control(self, control_matrix):
@@ -111,14 +111,15 @@ class Facility:
       # Iterate over weight classes. 1kg+, 2kg+, 3kg+, 4kg+, 5kg+, 6kg+
       tank_population = self.tank_fish[tank_i]
       to_harvest = int(tank_control[1])
-      
-      harvestables = self.harvest(tank_population, to_harvest)
+  
+      harvestables, altered_popoulation = self.harvest(tank_population, to_harvest)    
       harvestables_global.append(harvestables)
         
       # Add smolt to tank (We do this last to avoid iterating over the smolt unneccesarily)
       to_release = int(tank_control[0])
+      
       if (to_release > 0):
-        tank_population += [0.03 for _ in range(to_release)]
+        self.tank_fish[tank_i] = altered_popoulation + [0.03 for _ in range(to_release)]
 
     maxlength = len(max(harvestables_global, key=len))
     usable = torch.zeros((len(control_matrix), max(maxlength, 1)))
@@ -129,9 +130,9 @@ class Facility:
 
     # Calculate revenue from selling fish at current spot price
     mean_tank = torch.mean(usable, 1)
-    print('mean tank', mean_tank, 'control matrix', control_matrix)
+    #print('mean tank', mean_tank, 'control matrix', control_matrix)
     revenue_per_tank = mean_tank * control_matrix[:, 1]
-    print('revenue per tank', revenue_per_tank)
+    #print('revenue per tank', revenue_per_tank)
     revenue = self.price * torch.sum(revenue_per_tank) 
 
 
@@ -142,21 +143,23 @@ class Facility:
     total_penalty = torch.clamp(resulting_total_weight - self.MAX_BIOMASS_FACILITY, 0, None)
 
     # Penalise cost of planting
-    plant_penalty = torch.sum(control_matrix[:, 0]) * torch.tensor(COST_SMOLT)
+    plant_matrix = control_matrix[:, 0]
+    plant_matrix = torch.where(plant_matrix > 0, plant_matrix, 0.)
+    plant_penalty = torch.sum(plant_matrix) * torch.tensor(COST_SMOLT)
+    
 
     # Penalise doing nothing to enoucrage planting
     do_nothing_bias = torch.tensor(1)
 
     
-    print('revenue', revenue)
-    print('plant penalty', plant_penalty)
-    print('tank volume penalty', per_tank_penalty)
-    print('total volume penalty', total_penalty)
+    #print('revenue', revenue)
+    #print('plant penalty', plant_penalty)
+    #print('tank volume penalty', per_tank_penalty)
+    #print('total volume penalty', total_penalty)
 
     
     reward = \
       revenue \
-      - plant_penalty  \
       - per_tank_penalty \
       - total_penalty \
       - do_nothing_bias
