@@ -30,17 +30,13 @@ def train():
     harvest_action = harvest_probs.sample()
     harvest_log_probs = harvest_probs.log_prob(harvest_action)
 
-
-
     action = torch.tensor([[plant_action, harvest_action]])
-    
-    
+  
     reward = env.control(action)
     updated_state = env.model_input()
     
     
     delta = reward - R_bar + value_net(updated_state) - value_net.forward(state)    
-    
     R_bar = ((1 - learning_rate) * R_bar + learning_rate * delta).detach()
     critic_loss = delta**2
     actor_loss = -(harvest_log_probs + plant_log_probs) * delta
@@ -57,8 +53,6 @@ def train():
     
     rewards.append(reward.item())
     tank_fish_num.append(len(env.tank_fish[0]))
-    
-
 
   figure, axis = plt.subplots(3, 1)
 
