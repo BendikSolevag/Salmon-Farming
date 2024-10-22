@@ -14,18 +14,15 @@ def traditional():
   for _ in range(18):
     fac.grow()
   deterministic_fish_weight = fac.tank_fish[0][0]
-  print('deterministic fish weight', deterministic_fish_weight)
 
   fac = Facility()
 
   # In order to not exceed the max biomass constraints, determine the max allowable weight for each tank.
   max_w_p_t = min(MAX_BIOMASS_PER_TANK, MAX_BIOMASS_FACILITY / N_TANKS)
-  print('maxwpt', max_w_p_t)
 
   # Floor of the  max allowable weight per tank divided by predicted fish size determines the number of fish to plant, and to harvest (as we assume 0 mortality).
   plant_n = int(max_w_p_t / deterministic_fish_weight)
 
-  print('plant n', plant_n)
 
   MAX_TIMESTEPS = 90
   total_yield_per_time = [0 for _ in range(MAX_TIMESTEPS)]

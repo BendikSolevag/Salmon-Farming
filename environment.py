@@ -24,7 +24,7 @@ class Facility:
   def __init__(self):
     self.COST_SMOLT = torch.tensor(COST_SMOLT)
     self.COST_FEED = torch.tensor(COST_FEED)
-    self.COST_FIXED_HARVEST = torch.tensor(COST_FIXED_HARVEST)
+    self.COST_FIXED_HARVEST = COST_FIXED_HARVEST.clone().detach()
     self.N_TANKS = torch.tensor(N_TANKS)
 
     self.MAX_BIOMASS_PER_TANK = torch.tensor([MAX_BIOMASS_PER_TANK for _ in range(N_TANKS)])
@@ -110,16 +110,15 @@ class Facility:
 
       # Iterate over weight classes. 1kg+, 2kg+, 3kg+, 4kg+, 5kg+, 6kg+
       tank_population = self.tank_fish[tank_i]
-      to_harvest = int(tank_control[1])
-  
+      to_plant, to_harvest = int(tank_control[0]), int(tank_control[1])
       harvestables, altered_popoulation = self.harvest(tank_population, to_harvest)    
-      harvestables_global.append(harvestables)
-        
-      # Add smolt to tank (We do this last to avoid iterating over the smolt unneccesarily)
-      to_release = int(tank_control[0])
+      harvestables_global.append(harvestables)    
       
-      if (to_release > 0):
-        self.tank_fish[tank_i] = altered_popoulation + [0.03 for _ in range(to_release)]
+      # Add smolt to tank (We do this last to avoid iterating over the smolt unneccesarily)  
+      if (to_plant > 0):
+        altered_popoulation = altered_popoulation + [0.03 for _ in range(to_plant)]
+        
+        self.tank_fish[tank_i] = altered_popoulation
 
     maxlength = len(max(harvestables_global, key=len))
     usable = torch.zeros((len(control_matrix), max(maxlength, 1)))
@@ -141,6 +140,7 @@ class Facility:
     resulting_total_weight = torch.sum(resulting_tank_weights)
     per_tank_penalty = torch.sum(torch.clamp((resulting_tank_weights - self.MAX_BIOMASS_PER_TANK), 0, None))
     total_penalty = torch.clamp(resulting_total_weight - self.MAX_BIOMASS_FACILITY, 0, None)
+    
 
     # Penalise cost of planting
     plant_matrix = control_matrix[:, 0]

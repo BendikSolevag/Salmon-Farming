@@ -3,6 +3,7 @@ from agent import PolicyNetwork, ValueNetwork
 import config
 import torch
 from environment import Facility
+import matplotlib.pyplot as plt
 torch.autograd.set_detect_anomaly(True)
 
 def train():
@@ -13,15 +14,13 @@ def train():
   policy_net = PolicyNetwork()
   value_net = ValueNetwork()  
   state = env.model_input()
-  for i in tqdm(range(10000)):
-    #print('\n\ntank fish', len(env.tank_fish[0]))
-    #print('tank weight', sum(env.tank_fish[0]))
-    #print(state)
+  rewards = []
+  for _ in tqdm(range(5000)):
     
     out = policy_net.forward(state)[0]
     plant_mu, harvest_mu = out[0], out[1]
     
-    print('harvest', round(harvest_mu.item(), 2))
+    
     plant_probs = torch.distributions.Normal(plant_mu, 1)
     plant_action = plant_probs.sample()
     plant_log_probs = plant_probs.log_prob(plant_action)
@@ -29,15 +28,16 @@ def train():
     harvest_action = harvest_probs.sample()
     harvest_log_probs = harvest_probs.log_prob(harvest_action)
 
+
+
     action = torch.tensor([[plant_action, harvest_action]])
     
     
     reward = env.control(action)
-    
-    
+    print('reward', reward)
     updated_state = env.model_input()
     
-    print('reward', reward)
+    
     delta = reward - R_bar + value_net(updated_state) - value_net.forward(state)    
     
     R_bar = ((1 - learning_rate) * R_bar + learning_rate * delta).detach()
@@ -53,9 +53,12 @@ def train():
     
     env.grow()
     state = updated_state
+    
+    rewards.append(reward.item())
+    
 
-
-
+  plt.plot(rewards)
+  plt.show()
 
 
 if __name__ == '__main__':
