@@ -15,7 +15,9 @@ def train():
   value_net = ValueNetwork()  
   state = env.model_input()
   rewards = []
-  for _ in tqdm(range(5000)):
+  tank_fish_num = []
+
+  for _ in tqdm(range(10000)):
     
     out = policy_net.forward(state)[0]
     plant_mu, harvest_mu = out[0], out[1]
@@ -34,7 +36,6 @@ def train():
     
     
     reward = env.control(action)
-    print('reward', reward)
     updated_state = env.model_input()
     
     
@@ -55,10 +56,28 @@ def train():
     state = updated_state
     
     rewards.append(reward.item())
+    tank_fish_num.append(len(env.tank_fish[0]))
     
 
-  plt.plot(rewards)
+
+  figure, axis = plt.subplots(3, 1)
+
+  # For Sine Function
+  axis[0].plot(rewards)
+  axis[0].set_title("Rewards")
+
+  axis[1].plot(tank_fish_num)
+  axis[1].set_title("Number of fish in tank")
+  
+  
+  # For Cosine Function
+  axis[2].plot(env.plants, label="Plants")
+  axis[2].plot(env.harvests, label="Harvests")
+  axis[2].set_title("Plant/Harvest")
+  axis[2].legend()
+
   plt.show()
+
 
 
 if __name__ == '__main__':

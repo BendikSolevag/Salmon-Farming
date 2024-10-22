@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import threading
+import copy
 
 from config import (
   MISSING_FISH_PENALTY_FACTOR,
@@ -39,6 +40,8 @@ class Facility:
     # Each individual tank is given as a list of floating point numbers. 
     # The facility state tank_fish becomes a list of lists of numbers.
     self.tank_fish = [[] for _ in range(self.N_TANKS)]
+    self.plants = []
+    self.harvests = []
     
     # Weekly
     self.growth_table = [
@@ -92,7 +95,8 @@ class Facility:
       harvestables = population[:to_harvest]
       population = population[to_harvest:]
       return harvestables, population
-        
+  
+
 
   def control(self, control_matrix):
     """
@@ -111,15 +115,24 @@ class Facility:
       # Iterate over weight classes. 1kg+, 2kg+, 3kg+, 4kg+, 5kg+, 6kg+
       tank_population = self.tank_fish[tank_i]
       to_plant, to_harvest = int(tank_control[0]), int(tank_control[1])
-      harvestables, altered_popoulation = self.harvest(tank_population, to_harvest)    
-      harvestables_global.append(harvestables)    
+
+      self.plants.append(to_plant)
+      self.harvests.append(to_harvest)
+
+      
+      altered_population = copy.deepcopy(tank_population)
+      harvestables = []
+      if to_harvest > 0:
+        harvestables, altered_population = self.harvest(tank_population, to_harvest)    
+      harvestables_global.append(harvestables)   
+
       
       # Add smolt to tank (We do this last to avoid iterating over the smolt unneccesarily)  
       if (to_plant > 0):
-        altered_popoulation = altered_popoulation + [0.03 for _ in range(to_plant)]
-        
-        self.tank_fish[tank_i] = altered_popoulation
+        altered_population = altered_population + [0.03 for _ in range(to_plant)]
 
+      self.tank_fish[tank_i] = altered_population
+      
     maxlength = len(max(harvestables_global, key=len))
     usable = torch.zeros((len(control_matrix), max(maxlength, 1)))
     if maxlength > 0:
