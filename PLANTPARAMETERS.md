@@ -24,6 +24,12 @@ Harvest yield loss: 0.85 Mortality (month): 0.043
 
 ## Fordypningsemne Presentasjon
 
-Bruk mye tid på idé, banktanke, problemstilling Litt om prismodell **Kritisk til
-antakelser** Stor frihet i slaktetidspunkt, hva er urealistisk? Spm til
-vekst-forenkling
+Bruk mye tid på idé, banktanke, problemstilling
+
+Litt om prismodell
+
+**Kritisk til antakelser**
+
+Stor frihet i slaktetidspunkt, hva er urealistisk?
+
+Spm til vekst-forenkling

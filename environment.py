@@ -90,11 +90,11 @@ class Facility:
       if to_harvest > len(population):
         harvestables = population
         population = []
-        return harvestables, population, 100
+        return harvestables, population
 
       harvestables = population[:to_harvest]
       population = population[to_harvest:]
-      return harvestables, population, 0
+      return harvestables, population
   
 
 
@@ -172,11 +172,6 @@ class Facility:
     penalise_negatives = torch.sum(plants)
     
 
-
-
-
-
-
     reward = \
       revenue \
       - per_tank_penalty \
@@ -191,27 +186,33 @@ class Facility:
     @returns Tensor with size (N_TANKS, 16), each row i denoting an individual tank, 
       each column j denoting the number of fish in each weight class, and the average weight of each fish
     """
-    #TODO: Legg til spotpris i model_input
-    #TODO: vurder: Legg til std i model_input
-    out = torch.zeros((self.N_TANKS, 17))
-    out[:, -1] = self.price
-    for i in range(len(self.tank_fish)):
-      tank = self.tank_fish[i]
-      for fish in tank:
-        # Increment the weight group
-        out[i, 2 * int(fish // 1000)] += 1
-
-        # Increment the weight count
-        out[i, 2 * int(fish // 1000) + 1] += fish
-
-      
-      # Use average weight rather than total weight
-      for j in range(8):
-        if out[i, 2*j] != 0.0:
-          out[i, (2*j)+1] = out[i, (2*j)+1] / out[i, 2*j]
-
-    # TODO: Flatten state variables to make more compatible with linear layers passing
+    out = torch.zeros(self.N_TANKS * 4 + 1)
+    out[0] = np.log(self.price)
+    for i, population in enumerate(self.tank_fish):
+      if len(population) == 0:
+        out[4*i+1] = 0
+        out[4*i+2] = 0
+        out[4*i+3] = 0
+        out[4*i+4] = 0
+        continue
+      array = torch.tensor(population)
+      mean = torch.mean(array)
+      diffs = array - mean
+      var = torch.mean(torch.pow(diffs, 2.0))
+      std = torch.pow(var, 0.5)
+      zscores = diffs / std
+      skew = torch.mean(torch.pow(zscores, 3.0))
+      kurtosis = torch.mean(torch.pow(zscores, 4.0)) - 3.0 
+      out[4*i+1] = mean
+      out[4*i+2] = std
+      if std == 0:
+        out[4*i+3] = 0
+        out[4*i+4] = 0
+        continue  
+      out[4*i+3] = skew
+      out[4*i+4] = kurtosis
     return out
+
 
   
 
