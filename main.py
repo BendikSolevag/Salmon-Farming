@@ -14,31 +14,27 @@ def train():
   policy_net = PolicyNetwork()
   value_net = ValueNetwork()  
   state = env.model_input()
+  total_tank_weights = []
   rewards = []
-  tank_fish_num = []
 
-  for i in tqdm(range(50000)):
+  MAX_TIMESTEPS = 50000
+
+  for i in tqdm(range(MAX_TIMESTEPS)):
     
     out = policy_net.forward(state)
-    harvest_mu = out[0]
-    
-    harvest_probs = torch.distributions.Normal(torch.exp(harvest_mu), 1)
-    harvest_action = harvest_probs.sample()
-    harvest_log_probs = harvest_probs.log_prob(harvest_action)
+    harvest_probs = torch.distributions.Bernoulli(out)
+    control_matrix = harvest_probs.sample()
+    harvest_log_probs = harvest_probs.log_prob(control_matrix)
 
-  
-    reward = env.control(harvest_action)
+    reward = env.control(control_matrix)    
     updated_state = env.model_input()
-    
-    
+
     delta = reward - R_bar + value_net(updated_state) - value_net.forward(state)    
     R_bar = ((1 - learning_rate) * R_bar + learning_rate * delta).detach()
     critic_loss = delta**2
-    actor_loss = -(harvest_log_probs * delta)
+    actor_loss = -(harvest_log_probs) * delta
     combined = actor_loss + critic_loss
     combined.backward()
-
-    
 
     policy_net.optimizer.step()
     value_net.optimizer.step()
@@ -47,26 +43,20 @@ def train():
     
     env.grow()
     state = updated_state
-    rewards.append(reward)
-    tank_fish_num.append(len(env.tank_fish[0]))
+    
+    total_tank_weights.append(sum(env.tank_fish[0]))
+    rewards.append(reward.item())
 
-  figure, axis = plt.subplots(3, 1)
-
-  # For Sine Function
-  axis[0].plot(rewards)
-  axis[0].set_title("Rewards")
-
-  axis[1].plot(tank_fish_num)
-  axis[1].set_title("Number of fish in tank")
+    
+      
+  fig, axes = plt.subplots(2, 1)
   
-  
-  # For Cosine Function
-  axis[2].plot(env.plants, label="Plants")
-  axis[2].plot(env.harvests, label="Harvests")
-  axis[2].set_title("Plant/Harvest")
-  axis[2].legend()
+  axes[0].plot(total_tank_weights)
+  axes[0].plot([config.MAX_BIOMASS_FACILITY for _ in range(len(total_tank_weights))])
 
+  axes[1].plot(rewards)
   plt.show()
+
 
 
 

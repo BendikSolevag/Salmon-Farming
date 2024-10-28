@@ -8,9 +8,11 @@ class PolicyNetwork(nn.Module):
   def __init__(self):
     super(PolicyNetwork, self).__init__()
     self.activation = nn.ReLU()
+    self.sigmoid = nn.Sigmoid()
+
+    self.n_layers = config.POLICY_NETWORK_LAYERS
 
     self.shape = config.N_TANKS * 4 + 1
-    self.n_layers = config.POLICY_NETWORK_LAYERS
     self.layers = nn.ModuleList([
       nn.Linear(self.shape, self.shape) for _ in range(config.POLICY_NETWORK_LAYERS)
     ])
@@ -25,7 +27,7 @@ class PolicyNetwork(nn.Module):
       x = layer(x)
       if i < self.n_layers - 1:
         x = self.activation(x)
-    return x
+    return self.sigmoid(x)
   
 
 class ValueNetwork(nn.Module):

@@ -109,31 +109,34 @@ class Facility:
     """
 
     tot_weights_tensor = torch.zeros((N_TANKS))
+    
     for n in range(self.N_TANKS):
       tot_weights_tensor[n] = sum(self.tank_fish[n])
 
-    control_matrix = torch.where(control_matrix > 0.5, 1.0, 0.0)
     harvest_reward = control_matrix * tot_weights_tensor
     harvest_reward = torch.sum(harvest_reward)
     revenue = harvest_reward * self.price
 
-    for n in range(self.N_tanks):
+    for n in range(self.N_TANKS):
       if control_matrix[n] == 1.0:
-        self.tank_fish[n] = [[0.03 for _ in range(int(MAX_BIOMASS_PER_TANK / 4.5))] for _ in range(self.N_TANKS)]
+        self.tank_fish[n] = [0.03 for _ in range(int(MAX_BIOMASS_PER_TANK / 4.5))]
 
-  
+    
     tank_density_penalty = torch.where(tot_weights_tensor > self.MAX_BIOMASS_PER_TANK, 1, 0)
+    
     tank_density_penalty = torch.sum(tank_density_penalty) * PENALTY_TANK_DENSITY
+
     
     faicility_density_penalty = (torch.sum(tot_weights_tensor) > self.MAX_BIOMASS_FACILITY) * PENALTY_FACILITY_DENSITY
 
+    
 
     # Fixed cost due to harvesting
     harvest_penalty = (torch.sum(control_matrix) > 0) * self.COST_FIXED_HARVEST
+    
 
-    # Penalise doing nothing to enoucrage planting
+    # Penalise doing nothing to enoucrage action
     do_nothing_bias = torch.tensor(1)
-
 
 
     reward = \
@@ -154,32 +157,12 @@ class Facility:
     out = torch.zeros(self.N_TANKS * 4 + 1)
     out[0] = np.log(self.price)
     for i, population in enumerate(self.tank_fish):
-      if len(population) == 0:
-        out[4*i+1] = 0
-        out[4*i+2] = 0
-        out[4*i+3] = 0
-        out[4*i+4] = 0
-        continue
       array = torch.tensor(population)
       mean = torch.mean(array)
-      diffs = array - mean
-      var = torch.mean(torch.pow(diffs, 2.0))
-      std = torch.pow(var, 0.5)
-      zscores = diffs / std
-      skew = torch.mean(torch.pow(zscores, 3.0))
-      kurtosis = torch.mean(torch.pow(zscores, 4.0)) - 3.0 
-      out[4*i+1] = mean
-      out[4*i+2] = std
-      if std == 0:
-        out[4*i+3] = 0
-        out[4*i+4] = 0
-        continue  
-      out[4*i+3] = skew
-      out[4*i+4] = kurtosis
+      out[i+1] = mean
     return out
-
-
   
+
 
   def harvest_yield(self, harvest_weight):
     return harvest_weight * self.price
