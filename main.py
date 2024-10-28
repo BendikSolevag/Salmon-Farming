@@ -17,7 +17,7 @@ def train():
   rewards = []
   tank_fish_num = []
 
-  for i in tqdm(range(100000)):
+  for i in tqdm(range(50000)):
 
 
     
@@ -47,6 +47,8 @@ def train():
     actor_loss = -(harvest_log_probs + plant_log_probs) * delta
     combined = actor_loss + critic_loss
     combined.backward()
+
+    
 
     policy_net.optimizer.step()
     value_net.optimizer.step()

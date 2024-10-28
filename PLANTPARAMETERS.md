@@ -17,8 +17,15 @@ Oksygenkostnad: Vokser med fiskemasse. Oxygen cost = Oxygen consumption
 Vannkostnad Strømkostnad Smoltkostnad ( 160 NOK / KG ), Kr. 8,5 pr. individ + 8
 øre pr. gram
 
-Begrensinger (28 tanker): MAB: 3900 tonn tetthet: 45 kg/m^3 Årlig produksjon:
-5500 tonn Tankvolum 3500 m^3
+Begrensinger (28 tanker):
+
+MAB: 3900 tonn
+
+tetthet: 45 kg/m^3
+
+Årlig produksjon: 5500 tonn
+
+Tankvolum 3500 m^3
 
 Harvest yield loss: 0.85 Mortality (month): 0.043
 

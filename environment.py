@@ -88,7 +88,7 @@ class Facility:
       Returns weight of fish harvested.
       """
       if to_harvest > len(population):
-        harvestables = population
+        harvestables = population + [0 for _ in range(to_harvest - len(population))]
         population = []
         return harvestables, population
 
@@ -106,6 +106,9 @@ class Facility:
         First position determines how many smolt to release into the tank. 
         Other positions determines how many fish to harvest from each weight class.
     """
+    #print('control matrix', control_matrix)
+    #print('state', self.tank_fish)
+    control_matrix = torch.round(control_matrix)
     harvestables_global = []
     for tank_i in range(len(control_matrix)):
       tank_control = control_matrix[tank_i]
@@ -131,6 +134,8 @@ class Facility:
 
       self.tank_fish[tank_i] = altered_population
       
+
+    #print('harvestables_global', harvestables_global)
     maxlength = len(max(harvestables_global, key=len))
     usable = torch.zeros((len(control_matrix), max(maxlength, 1)))
     if maxlength > 0:
@@ -138,10 +143,14 @@ class Facility:
         for j in range(len(harvestables_global[i])):
           usable[i, j] = harvestables_global[i][j]
 
+    #print('usable', usable)
     # Calculate revenue from selling fish at current spot price
     mean_tank = torch.mean(usable, 1)
-    revenue_per_tank = mean_tank * control_matrix[:, 1]
-    revenue = self.price * torch.sum(revenue_per_tank) 
+    #print('mean tank', mean_tank)
+    harvested_per_tank = mean_tank * control_matrix[:, 1]
+    #print('harvested per tank', harvested_per_tank)
+    revenue = self.price * torch.sum(harvested_per_tank) 
+    #print('revenue', revenue)
 
 
     # Calculate penalty from based on biomass constraints
@@ -172,8 +181,16 @@ class Facility:
     penalise_negatives = torch.sum(plants)
     
 
+    
+    #print('revenue', revenue)
+    #print('per tank penalty', per_tank_penalty)
+    #print('total penalty', total_penalty)
+    #print('penalise_negatives', penalise_negatives)
+    #print('\n\n')
+
     reward = \
       revenue \
+      - harvest_penalty \
       - per_tank_penalty \
       - total_penalty \
       - do_nothing_bias \
