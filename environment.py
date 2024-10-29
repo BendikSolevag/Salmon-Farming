@@ -17,6 +17,9 @@ from config import (
   SPOT_SIGMA, 
   SPOT_DT, 
   F_PARAMS, 
+
+  PENALTY_TANK_DENSITY,
+  PENALTY_FACILITY_DENSITY
   
 )
 
@@ -29,7 +32,6 @@ class Facility:
     self.N_TANKS = torch.tensor(N_TANKS)
 
     self.MAX_BIOMASS_PER_TANK = torch.tensor([MAX_BIOMASS_PER_TANK for _ in range(N_TANKS)])
-
     self.MAX_BIOMASS_FACILITY = torch.tensor(MAX_BIOMASS_FACILITY)
     self.spot = oup()
     self.price = next(self.spot)
@@ -39,10 +41,8 @@ class Facility:
 
     # Each individual tank is given as a list of floating point numbers. 
     # The facility state tank_fish becomes a list of lists of numbers.
-    self.tank_fish = [[] for _ in range(self.N_TANKS)]
-    self.plants = []
-    self.harvests = []
-    
+    self.tank_fish = [[0.03 for _ in range(int(MAX_BIOMASS_PER_TANK / 4.5))] for _ in range(self.N_TANKS)]
+
     # Weekly
     self.growth_table = [
       (0.03, 1.1943799068682943),
@@ -52,7 +52,7 @@ class Facility:
       (0.4, 1.1267938307200838),
       (0.5, 1.1167519571702413),
       (0.6, 1.1083149969537),
-      (0.7, 1.1014527241658891),
+      (0.7, 1.1014527241658891), 
       (0.8, 1.095383532071859),
       (0.9, 1.0900965254967199),
       (1.0, 1.0855822295154363),
@@ -79,7 +79,7 @@ class Facility:
       (4.75, 1.0355293969407338),
       (5.0, 1.0348083479512196),
       (5.25, 1.03408772935305)
-      ]
+    ]
 
 
   def harvest(self, population, to_harvest):
@@ -97,7 +97,6 @@ class Facility:
       return harvestables, population
   
 
-
   def control(self, control_matrix):
     """
     @param control_matrix: Two dimensional array. 
@@ -106,96 +105,52 @@ class Facility:
         First position determines how many smolt to release into the tank. 
         Other positions determines how many fish to harvest from each weight class.
     """
-    #print('control matrix', control_matrix)
-    #print('state', self.tank_fish)
-    control_matrix = torch.round(control_matrix)
-    harvestables_global = []
-    for tank_i in range(len(control_matrix)):
-      tank_control = control_matrix[tank_i]
 
-      # Iterate over weight classes. 1kg+, 2kg+, 3kg+, 4kg+, 5kg+, 6kg+
-      tank_population = self.tank_fish[tank_i]
-      to_plant, to_harvest = int(tank_control[0]), int(tank_control[1])
-
-      self.plants.append(to_plant)
-      self.harvests.append(to_harvest)
-
-      
-      altered_population = copy.deepcopy(tank_population)
-      harvestables = []
-      if to_harvest > 0:
-        harvestables, altered_population = self.harvest(tank_population, to_harvest)    
-      harvestables_global.append(harvestables)   
-
-      
-      # Add smolt to tank (We do this last to avoid iterating over the smolt unneccesarily)  
-      if (to_plant > 0):
-        altered_population = altered_population + [0.03 for _ in range(to_plant)]
-
-      self.tank_fish[tank_i] = altered_population
-      
-
-    #print('harvestables_global', harvestables_global)
-    maxlength = len(max(harvestables_global, key=len))
-    usable = torch.zeros((len(control_matrix), max(maxlength, 1)))
-    if maxlength > 0:
-      for i in range(len(control_matrix)):
-        for j in range(len(harvestables_global[i])):
-          usable[i, j] = harvestables_global[i][j]
-
-    #print('usable', usable)
-    # Calculate revenue from selling fish at current spot price
-    mean_tank = torch.mean(usable, 1)
-    #print('mean tank', mean_tank)
-    harvested_per_tank = mean_tank * control_matrix[:, 1]
-    #print('harvested per tank', harvested_per_tank)
-    revenue = self.price * torch.sum(harvested_per_tank) 
-    #print('revenue', revenue)
-
-
-    # Calculate penalty from based on biomass constraints
-    resulting_tank_weights = torch.tensor([sum(tank) for tank in self.tank_fish])
-    resulting_total_weight = torch.sum(resulting_tank_weights)
-    per_tank_penalty = torch.sum(torch.clamp((resulting_tank_weights - self.MAX_BIOMASS_PER_TANK), 0, None))
-    total_penalty = torch.clamp(resulting_total_weight - self.MAX_BIOMASS_FACILITY, 0, None)
+    tot_weights_tensor = torch.zeros((N_TANKS))
     
+    for n in range(self.N_TANKS):
+      tot_weights_tensor[n] = sum(self.tank_fish[n])
 
-    # Penalise cost of planting
-    plant_matrix = control_matrix[:, 0]
-    plant_matrix = torch.where(plant_matrix > 0, plant_matrix, 0.)
-    plant_penalty = torch.sum(plant_matrix) * torch.tensor(COST_SMOLT)
+    harvest_reward = control_matrix * tot_weights_tensor
+    harvest_reward = torch.sum(harvest_reward)
+    revenue = harvest_reward * self.price
 
+    for n in range(self.N_TANKS):
+      if control_matrix[n] == 1.0:
+        self.tank_fish[n] = [0.03 for _ in range(int(MAX_BIOMASS_PER_TANK / 4.5))]
+
+    
+    tank_density_penalty = torch.where(tot_weights_tensor > self.MAX_BIOMASS_PER_TANK, 1, 0)
+    
+    tank_density_penalty = torch.sum(tank_density_penalty) * PENALTY_TANK_DENSITY
+
+    
+    faicility_density_penalty = (torch.sum(tot_weights_tensor) > self.MAX_BIOMASS_FACILITY) * PENALTY_FACILITY_DENSITY
+
+    
 
     # Fixed cost due to harvesting
-    harvest_penalty = control_matrix[:, 1]
-    harvest_penalty = torch.sum(torch.where(control_matrix > 1, 1, 0.))
-    harvest_penalty = harvest_penalty * self.COST_FIXED_HARVEST
-
-    # Penalise doing nothing to enoucrage planting
-    do_nothing_bias = torch.tensor(10)
-
-
-    # META
-    plants = control_matrix[:, 0]
-    plants = torch.clamp(plants, -float('inf'), 0)
-    penalise_negatives = torch.sum(plants)
+    harvest_penalty = (torch.sum(control_matrix) > 0) * self.COST_FIXED_HARVEST
     
 
     
+
+
     #print('revenue', revenue)
-    #print('per tank penalty', per_tank_penalty)
-    #print('total penalty', total_penalty)
-    #print('penalise_negatives', penalise_negatives)
-    #print('\n\n')
+    #print('harvest penalty', harvest_penalty)
+    #print('tank_density_penalty', tank_density_penalty)
+    #print('facility_density_penalty', faicility_density_penalty)
+
 
     reward = \
       revenue \
       - harvest_penalty \
-      - per_tank_penalty \
-      - total_penalty \
-      - do_nothing_bias \
-      + penalise_negatives
-    return reward
+      - tank_density_penalty \
+      - faicility_density_penalty \
+    
+    state_ = self.model_input()
+        
+    return state_, reward, 0
   
   
   def model_input(self):
@@ -203,35 +158,15 @@ class Facility:
     @returns Tensor with size (N_TANKS, 16), each row i denoting an individual tank, 
       each column j denoting the number of fish in each weight class, and the average weight of each fish
     """
-    out = torch.zeros(self.N_TANKS * 4 + 1)
+    out = torch.zeros(self.N_TANKS + 1)
     out[0] = np.log(self.price)
     for i, population in enumerate(self.tank_fish):
-      if len(population) == 0:
-        out[4*i+1] = 0
-        out[4*i+2] = 0
-        out[4*i+3] = 0
-        out[4*i+4] = 0
-        continue
       array = torch.tensor(population)
       mean = torch.mean(array)
-      diffs = array - mean
-      var = torch.mean(torch.pow(diffs, 2.0))
-      std = torch.pow(var, 0.5)
-      zscores = diffs / std
-      skew = torch.mean(torch.pow(zscores, 3.0))
-      kurtosis = torch.mean(torch.pow(zscores, 4.0)) - 3.0 
-      out[4*i+1] = mean
-      out[4*i+2] = std
-      if std == 0:
-        out[4*i+3] = 0
-        out[4*i+4] = 0
-        continue  
-      out[4*i+3] = skew
-      out[4*i+4] = kurtosis
+      out[i+1] = mean
     return out
-
-
   
+
 
   def harvest_yield(self, harvest_weight):
     return harvest_weight * self.price

@@ -5,7 +5,6 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
-
 def traditional():
 
   # Find the value of a single fish when the planned farm is allowed to run for the planned 18 months.

@@ -8,13 +8,19 @@ class PolicyNetwork(nn.Module):
   def __init__(self):
     super(PolicyNetwork, self).__init__()
     self.activation = nn.ReLU()
+    self.sigmoid = nn.Sigmoid()
+    self.threshold = nn.Threshold(0.5, 0)
 
-    self.shape = config.N_TANKS * 4 + 1
     self.n_layers = config.POLICY_NETWORK_LAYERS
-    self.layers = nn.ModuleList([
-      nn.Linear(self.shape, self.shape) for _ in range(config.POLICY_NETWORK_LAYERS)
-    ])
-    self.layers.append(nn.Linear(self.shape, config.N_TANKS * 2))
+
+    self.shape = config.N_TANKS + 1
+    self.hidden_layer_neurons = 8
+    self.layers = nn.ModuleList([])
+    self.layers.append(nn.Linear(self.shape, self.hidden_layer_neurons))
+    for _ in range(config.POLICY_NETWORK_LAYERS):
+      self.layers.append(nn.Linear(self.hidden_layer_neurons, self.hidden_layer_neurons))
+    self.layers.append(nn.Linear(self.hidden_layer_neurons, config.N_TANKS))
+
 
     self.optimizer = torch.optim.Adam(self.parameters(), lr=config.LEARNING_RATE)
     self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -26,7 +32,8 @@ class PolicyNetwork(nn.Module):
       x = layer(x)
       if i < self.n_layers - 1:
         x = self.activation(x)
-    return x
+    probs = self.sigmoid(x)
+    return probs
   
 
 class ValueNetwork(nn.Module):
@@ -34,7 +41,7 @@ class ValueNetwork(nn.Module):
     super(ValueNetwork, self).__init__()
     self.activation = nn.ReLU()
 
-    self.shape = config.N_TANKS * 4 + 1
+    self.shape = config.N_TANKS + 1
     self.n_layers = config.POLICY_NETWORK_LAYERS
     self.layers = nn.ModuleList([
       nn.Linear(self.shape, self.shape) for _ in range(config.POLICY_NETWORK_LAYERS - 1)
