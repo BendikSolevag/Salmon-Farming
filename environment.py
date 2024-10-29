@@ -32,14 +32,12 @@ class Facility:
     self.N_TANKS = torch.tensor(N_TANKS)
 
     self.MAX_BIOMASS_PER_TANK = torch.tensor([MAX_BIOMASS_PER_TANK for _ in range(N_TANKS)])
-
     self.MAX_BIOMASS_FACILITY = torch.tensor(MAX_BIOMASS_FACILITY)
     self.spot = oup()
     self.price = next(self.spot)
 
     self.plant_penalty_matrix = torch.zeros((N_TANKS, 8))
     self.plant_penalty_matrix[:, 0] = COST_SMOLT
-
 
     # Each individual tank is given as a list of floating point numbers. 
     # The facility state tank_fish becomes a list of lists of numbers.
@@ -54,7 +52,7 @@ class Facility:
       (0.4, 1.1267938307200838),
       (0.5, 1.1167519571702413),
       (0.6, 1.1083149969537),
-      (0.7, 1.1014527241658891),
+      (0.7, 1.1014527241658891), 
       (0.8, 1.095383532071859),
       (0.9, 1.0900965254967199),
       (1.0, 1.0855822295154363),
@@ -135,8 +133,13 @@ class Facility:
     harvest_penalty = (torch.sum(control_matrix) > 0) * self.COST_FIXED_HARVEST
     
 
-    # Penalise doing nothing to enoucrage action
-    do_nothing_bias = torch.tensor(1)
+    
+
+
+    #print('revenue', revenue)
+    #print('harvest penalty', harvest_penalty)
+    #print('tank_density_penalty', tank_density_penalty)
+    #print('facility_density_penalty', faicility_density_penalty)
 
 
     reward = \
@@ -144,9 +147,10 @@ class Facility:
       - harvest_penalty \
       - tank_density_penalty \
       - faicility_density_penalty \
-      - do_nothing_bias
-      
-    return reward
+    
+    state_ = self.model_input()
+        
+    return state_, reward, 0
   
   
   def model_input(self):
@@ -154,7 +158,7 @@ class Facility:
     @returns Tensor with size (N_TANKS, 16), each row i denoting an individual tank, 
       each column j denoting the number of fish in each weight class, and the average weight of each fish
     """
-    out = torch.zeros(self.N_TANKS * 4 + 1)
+    out = torch.zeros(self.N_TANKS + 1)
     out[0] = np.log(self.price)
     for i, population in enumerate(self.tank_fish):
       array = torch.tensor(population)
