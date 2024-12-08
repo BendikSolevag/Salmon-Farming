@@ -105,8 +105,6 @@ class Facility:
         First position determines how many smolt to release into the tank. 
         Other positions determines how many fish to harvest from each weight class.
     """
-
-
     
     if debug and torch.sum(control_matrix[0]) >= 1.0:
       print(np.mean(self.tank_fish[0]))
@@ -129,8 +127,7 @@ class Facility:
     
     tank_density_penalty = torch.sum(tank_density_penalty) * PENALTY_TANK_DENSITY
 
-    
-    faicility_density_penalty = (torch.sum(tot_weights_tensor) > self.MAX_BIOMASS_FACILITY) * PENALTY_FACILITY_DENSITY
+    facility_density_penalty = (torch.sum(tot_weights_tensor) > self.MAX_BIOMASS_FACILITY) * PENALTY_FACILITY_DENSITY
 
     # Fixed cost due to harvesting
     harvest_penalty = (torch.sum(control_matrix) > 0) * self.COST_FIXED_HARVEST
@@ -139,17 +136,16 @@ class Facility:
       revenue \
       - harvest_penalty \
       - tank_density_penalty \
-      - faicility_density_penalty
+      - facility_density_penalty
     
 
-
-
+    #debug = True
     if debug and torch.sum(control_matrix) >= 1.0:
       print('reward', reward)
       print('revenue', revenue)
       print('harvest penalty', harvest_penalty)
       print('tank_density_penalty', tank_density_penalty)
-      print('facility_density_penalty', faicility_density_penalty)
+      print('facility_density_penalty', facility_density_penalty)
 
 
     
