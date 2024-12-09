@@ -39,10 +39,13 @@ class Facility:
     self.plant_penalty_matrix = torch.zeros((N_TANKS, 8))
     self.plant_penalty_matrix[:, 0] = COST_SMOLT
 
-    # Each individual tank is given as a list of floating point numbers. 
-    # The facility state tank_fish becomes a list of lists of numbers.
-    self.tank_fish = [[0.03 for _ in range(int(MAX_BIOMASS_PER_TANK / 4.5))] for _ in range(self.N_TANKS)]
 
+    # Number of fish planted each generation
+    self.PLANT_NUNMBER = int(MAX_BIOMASS_PER_TANK / 4.5)
+    
+    # Each individual tank is given as a floating point number, representing the weight of an individual fish in the tank. 
+    self.tank_fish = [0.03 for _ in range(self.N_TANKS)]
+    
     # Weekly
     self.growth_table = [
       (0.03, 1.1943799068682943),
@@ -82,21 +85,6 @@ class Facility:
     ]
 
 
-  def harvest(self, population, to_harvest):
-      """
-      Iterates over fish population in a single tank. 
-      Returns weight of fish harvested.
-      """
-      if to_harvest > len(population):
-        harvestables = population + [0 for _ in range(to_harvest - len(population))]
-        population = []
-        return harvestables, population
-
-      harvestables = population[:to_harvest]
-      population = population[to_harvest:]
-      return harvestables, population
-  
-
   def control(self, control_matrix, debug=False):
     """
     @param control_matrix: Two dimensional array. 
@@ -107,31 +95,35 @@ class Facility:
     """
     
     if debug and torch.sum(control_matrix[0]) >= 1.0:
-      print(np.mean(self.tank_fish[0]))
+      print(self.tank_fish[0])
 
-    tot_weights_tensor = torch.zeros((N_TANKS))
-    
+    # TODO: Gjør tank_fish til enkel tensor, dette blir bare en clone-funksjon
+    tot_weights_tensor = torch.zeros((N_TANKS))    
     for n in range(self.N_TANKS):
-      tot_weights_tensor[n] = sum(self.tank_fish[n])
+      tot_weights_tensor[n] = self.tank_fish[n]
+    tot_weights_tensor = tot_weights_tensor * self.PLANT_NUNMBER
 
+
+    # Calculate earned revenue from selling
     harvest_reward = control_matrix * tot_weights_tensor
     harvest_reward = torch.sum(harvest_reward)
     revenue = harvest_reward * self.price
 
+    # Reset emptied tanks
     for n in range(self.N_TANKS):
       if control_matrix[n] == 1.0:
-        self.tank_fish[n] = [0.03 for _ in range(int(MAX_BIOMASS_PER_TANK / 4.5))]
+        self.tank_fish[n] = 0.03
 
-    
+    # Calculate density penalties where applicable
     tank_density_penalty = torch.where(tot_weights_tensor > self.MAX_BIOMASS_PER_TANK, 1, 0)
-    
     tank_density_penalty = torch.sum(tank_density_penalty) * PENALTY_TANK_DENSITY
-
     facility_density_penalty = (torch.sum(tot_weights_tensor) > self.MAX_BIOMASS_FACILITY) * PENALTY_FACILITY_DENSITY
 
-    # Fixed cost due to harvesting
+    # Add fixed cost of harvesting if applicable
     harvest_penalty = (torch.sum(control_matrix) > 0) * self.COST_FIXED_HARVEST
     
+
+    # Sum returnable reward from components
     reward = \
       revenue \
       - harvest_penalty \
@@ -148,9 +140,10 @@ class Facility:
       print('facility_density_penalty', facility_density_penalty)
 
 
-    
+    # Also return next state to control system
     state_ = self.model_input()
         
+    # Return (next state, reward, done)
     return state_, reward, 0
   
   
@@ -160,11 +153,10 @@ class Facility:
       each column j denoting the number of fish in each weight class, and the average weight of each fish
     """
     out = torch.zeros(self.N_TANKS + 1)
+    # Use the log-price so that the price input does not far exceed the weight input
     out[0] = np.log(self.price)
-    for i, population in enumerate(self.tank_fish):
-      array = torch.tensor(population)
-      mean = torch.mean(array)
-      out[i+1] = mean
+    for i, mean_weight in enumerate(self.tank_fish):
+      out[i+1] = mean_weight
     return out
   
 
@@ -177,39 +169,26 @@ class Facility:
     """
       Iterates through each tank's populations and applies the growth table (skretting) to the fish.
     """
-    threads = []
-    for tank_i in range(len(self.tank_fish)):
-      t = threading.Thread(target=grow_tank, args=(self.tank_fish[tank_i], self.growth_table))
-      t.start()
-      threads.append(t)
-    for thread in threads:
-      thread.join()
-      
+    lastbase = self.growth_table[-1][1] - 1
+    for fish_i in range(len(self.tank_fish)):
+      current = self.tank_fish[fish_i]
+      if current > 5.500:
+        rate = 1 + (lastbase * ( (2 * (7.500 - current)) / 7.500)**2)
+        self.tank_fish[fish_i] *= rate
+        continue
+
+      rate = 1.0257
+      j = 0
+      while j < len(self.growth_table) - 1 and current > self.growth_table[j][0]:
+        j += 1
+      rate = self.growth_table[j][1]
+      self.tank_fish[fish_i] *= rate
+
     self.price = next(self.spot)
 
 
-def grow_tank(tank: list[float], growth_table: list[(int, float)]):
-  lastbase = growth_table[-1][1] - 1
-  for fish_i in range(len(tank)):
-    current = tank[fish_i]
-    if current > 5.500:
-      rate = 1 + (lastbase * ( (2 * (7.500 - current)) / 7.500)**2)
-      tank[fish_i] *= rate
-      continue
-
-    rate = 1.0257
-    j = 0
-    # Iterate through the growth table, comparing the current fish's size to growth table weight groups. 
-    while j < len(growth_table) - 1 and current > growth_table[j][0]:
-      j += 1
-    rate = growth_table[j][1]
-    # Apply the identified growth rate to the fish
-    tank[fish_i] *= rate
 
 
-
-
-    
 
 def f(t, a0, b0, a1, theta):
   omega = 2*np.pi/TIMESTEPS_PER_ANNUM

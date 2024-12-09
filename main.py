@@ -73,7 +73,7 @@ def train():
       state = state_
 
       
-      total_tank_weights.append(sum([sum(fish) for fish in env.tank_fish]))
+      total_tank_weights.append(sum(env.tank_fish) * env.PLANT_NUNMBER)
       accumulative_reward = accumulative_reward + reward.item()
       rewards.append(accumulative_reward)
       trad_rewards.append(trad_accumulative_reward)
