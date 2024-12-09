@@ -1,10 +1,7 @@
 import torch
 import numpy as np
-import threading
-import copy
 
 from config import (
-  MISSING_FISH_PENALTY_FACTOR,
   TIMESTEPS_PER_ANNUM,
   COST_SMOLT,
   COST_FEED,
@@ -12,17 +9,13 @@ from config import (
   N_TANKS,
   MAX_BIOMASS_PER_TANK,
   MAX_BIOMASS_FACILITY,
-
   SPOT_KAPPA,
   SPOT_SIGMA, 
   SPOT_DT, 
   F_PARAMS, 
-
   PENALTY_TANK_DENSITY,
   PENALTY_FACILITY_DENSITY
-  
 )
-
 
 class Facility:
   def __init__(self):
@@ -44,7 +37,8 @@ class Facility:
     self.PLANT_NUNMBER = int(MAX_BIOMASS_PER_TANK / 4.5)
     
     # Each individual tank is given as a floating point number, representing the weight of an individual fish in the tank. 
-    self.tank_fish = [0.03 for _ in range(self.N_TANKS)]
+
+    self.tank_fish = torch.Tensor([0.03 for _ in range(self.N_TANKS)])
     
     # Weekly
     self.growth_table = [
@@ -94,15 +88,8 @@ class Facility:
         Other positions determines how many fish to harvest from each weight class.
     """
     
-    if debug and torch.sum(control_matrix[0]) >= 1.0:
-      print(self.tank_fish[0])
-
-    # TODO: Gjør tank_fish til enkel tensor, dette blir bare en clone-funksjon
-    tot_weights_tensor = torch.zeros((N_TANKS))    
-    for n in range(self.N_TANKS):
-      tot_weights_tensor[n] = self.tank_fish[n]
-    tot_weights_tensor = tot_weights_tensor * self.PLANT_NUNMBER
-
+    
+    tot_weights_tensor = self.tank_fish * self.PLANT_NUNMBER
 
     # Calculate earned revenue from selling
     harvest_reward = control_matrix * tot_weights_tensor
@@ -179,6 +166,7 @@ class Facility:
 
       rate = 1.0257
       j = 0
+      # Identify correct growth rate to apply to the fish
       while j < len(self.growth_table) - 1 and current > self.growth_table[j][0]:
         j += 1
       rate = self.growth_table[j][1]
