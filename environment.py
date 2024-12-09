@@ -26,8 +26,10 @@ class Facility:
 
     self.MAX_BIOMASS_PER_TANK = torch.tensor([MAX_BIOMASS_PER_TANK for _ in range(N_TANKS)])
     self.MAX_BIOMASS_FACILITY = torch.tensor(MAX_BIOMASS_FACILITY)
+    
     self.spot = oup()
-    self.price = next(self.spot)
+    self.price, self.price_rand = next(self.spot)
+    
 
     self.plant_penalty_matrix = torch.zeros((N_TANKS, 8))
     self.plant_penalty_matrix[:, 0] = COST_SMOLT
@@ -172,7 +174,7 @@ class Facility:
       rate = self.growth_table[j][1]
       self.tank_fish[fish_i] *= rate
 
-    self.price = next(self.spot)
+    self.price, self.price_rand = next(self.spot)
 
 
 
@@ -186,11 +188,13 @@ def oup():
   i = 0
   x = 0
   spot = x + f(i, *F_PARAMS)
+  rand = 0
 
   while True:
-    yield spot
+    yield spot, rand
     i = i + 1
-    dx = -SPOT_KAPPA * x * SPOT_DT + SPOT_SIGMA * np.sqrt(SPOT_DT) * np.random.normal()
+    rand = np.random.normal()
+    dx = -SPOT_KAPPA * x * SPOT_DT + SPOT_SIGMA * np.sqrt(SPOT_DT) * rand
     x = x + dx
     spot = x + f(i, *F_PARAMS)
 

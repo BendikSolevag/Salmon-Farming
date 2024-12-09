@@ -16,7 +16,7 @@ def train():
   fig, axes = plt.subplots(2, 1)
   
 
-  EPOCHS = 5
+  EPOCHS = 10
   MAX_TIMESTEPS = 1000
   pbar = tqdm(total=EPOCHS * MAX_TIMESTEPS)
   for epoch in range(EPOCHS):
@@ -25,19 +25,19 @@ def train():
 
     state = env.model_input()
     total_tank_weights = []
+    
     rewards = []
     accumulative_reward = 0
-    prices = []
-
     trad_rewards = []
     trad_accumulative_reward = 0
     for i in range(MAX_TIMESTEPS):
       pbar.update(1)
-      prices.append(env.price * 100)
       
       out = policy_net.forward(state)
       
       harvest_probs = torch.distributions.Bernoulli(out)
+      
+
       control_matrix = harvest_probs.sample()
       harvest_log_probs = harvest_probs.log_prob(control_matrix)
 
@@ -49,9 +49,7 @@ def train():
         
         tradnewstate, tradreward, traddone = env_traditional.control(torch.zeros(config.N_TANKS, dtype=torch.float))
         trad_accumulative_reward = trad_accumulative_reward + tradreward
-
         
-
 
       delta = reward + config.DISCOUNT_RATE * value_net(state_) - value_net.forward(state)    
       
@@ -78,7 +76,7 @@ def train():
       rewards.append(accumulative_reward)
       trad_rewards.append(trad_accumulative_reward)
 
-    if epoch % 4 == 0:
+    if epoch % (EPOCHS - 1) == 0:
       axes[0].plot(total_tank_weights, label=f"epoch {epoch}")
       axes[0].plot([config.MAX_BIOMASS_FACILITY for _ in range(len(total_tank_weights))])
       #axes[0].plot(prices, label=f"Price development {epoch}")
@@ -87,6 +85,9 @@ def train():
     if epoch == 0:
       axes[1].plot(trad_rewards, label=f"Trad rewards (0 epoch)")
       
+  
+  torch.save(policy_net.state_dict(), './model/policy_net.pth')
+
   
 
   axes[0].legend()
