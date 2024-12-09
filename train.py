@@ -16,7 +16,7 @@ def train():
   fig, axes = plt.subplots(2, 1)
   
 
-  EPOCHS = 10
+  EPOCHS = 6
   MAX_TIMESTEPS = 1000
   pbar = tqdm(total=EPOCHS * MAX_TIMESTEPS)
   for epoch in range(EPOCHS):
@@ -93,6 +93,7 @@ def train():
   axes[0].legend()
   axes[1].legend()
   plt.show()
+
 
 
 

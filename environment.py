@@ -29,6 +29,7 @@ class Facility:
     
     self.spot = oup()
     self.price, self.price_rand = next(self.spot)
+    self.price_mean_year = self.price
     
 
     self.plant_penalty_matrix = torch.zeros((N_TANKS, 8))
@@ -175,6 +176,7 @@ class Facility:
       self.tank_fish[fish_i] *= rate
 
     self.price, self.price_rand = next(self.spot)
+    self.price_mean_year = (self.price_mean_year * 51) / 52 + self.price / 52
 
 
 

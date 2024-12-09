@@ -11,4 +11,4 @@ for _ in range(125):
 plt.plot(weight_prog)
 plt.xlabel('Week')
 plt.ylabel('Weight')
-plt.savefig('./figures/growth.png')
+plt.savefig('./figures/datasetanalysis/growth.png', format="png")
