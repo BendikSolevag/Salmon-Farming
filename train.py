@@ -21,16 +21,13 @@ def train():
   pbar = tqdm(total=EPOCHS * MAX_TIMESTEPS)
   for epoch in range(EPOCHS):
     env = Facility()
-    env_traditional = Facility()
 
     state = env.model_input()
     total_tank_weights = []
     
     rewards = []
     accumulative_reward = 0
-    trad_rewards = []
-    trad_accumulative_reward = 0
-    for i in range(MAX_TIMESTEPS):
+    for _ in range(MAX_TIMESTEPS):
       pbar.update(1)
       
       out = policy_net.forward(state)
@@ -42,22 +39,12 @@ def train():
       harvest_log_probs = harvest_probs.log_prob(control_matrix)
 
       state_, reward, done = env.control(control_matrix)    
-      if i > 0 and i % 49 == 0:
-        tradnewstate, tradreward, traddone = env_traditional.control(torch.ones(config.N_TANKS, dtype=torch.float))
-        trad_accumulative_reward = trad_accumulative_reward + tradreward
-      else:
-        
-        tradnewstate, tradreward, traddone = env_traditional.control(torch.zeros(config.N_TANKS, dtype=torch.float))
-        trad_accumulative_reward = trad_accumulative_reward + tradreward
-        
 
+        
       delta = reward + config.DISCOUNT_RATE * value_net(state_) - value_net.forward(state)    
-      
       R_bar = ((1 - learning_rate) * R_bar + learning_rate * delta).detach()
 
-      
       critic_loss = delta**2
-      
       actor_loss = -torch.sum(harvest_log_probs) * delta
       combined = actor_loss + critic_loss
       combined.backward()
@@ -74,7 +61,6 @@ def train():
       total_tank_weights.append(sum(env.tank_fish) * env.PLANT_NUNMBER)
       accumulative_reward = accumulative_reward + reward.item()
       rewards.append(accumulative_reward)
-      trad_rewards.append(trad_accumulative_reward)
 
     if epoch % (EPOCHS - 1) == 0:
       axes[0].plot(total_tank_weights, label=f"epoch {epoch}")
@@ -82,10 +68,6 @@ def train():
       #axes[0].plot(prices, label=f"Price development {epoch}")
       axes[1].plot(rewards, label=f"epoch {epoch}")
       
-    if epoch == 0:
-      axes[1].plot(trad_rewards, label=f"Trad rewards (0 epoch)")
-      
-  
   torch.save(policy_net.state_dict(), './model/policy_net.pth')
 
   
