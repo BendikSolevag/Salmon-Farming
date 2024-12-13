@@ -13,9 +13,11 @@ from config import (
   SPOT_SIGMA, 
   SPOT_DT, 
   F_PARAMS, 
+  F_PARAMS_DETREND,
   PENALTY_TANK_DENSITY,
   PENALTY_FACILITY_DENSITY
 )
+#F_PARAMS = F_PARAMS_DETREND
 
 class Facility:
   def __init__(self):
