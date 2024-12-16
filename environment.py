@@ -153,8 +153,7 @@ class Facility:
   
 
 
-  def harvest_yield(self, harvest_weight):
-    return harvest_weight * self.price
+  
 
 
   def grow(self):
