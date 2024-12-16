@@ -17,7 +17,7 @@ def train():
   
 
   EPOCHS = 1
-  MAX_TIMESTEPS = 16000
+  MAX_TIMESTEPS = 30000
   pbar = tqdm(total=EPOCHS * MAX_TIMESTEPS)
   for epoch in range(EPOCHS):
     env = Facility()

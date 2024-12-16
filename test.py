@@ -17,6 +17,7 @@ def test():
   EPOCHS = 1
   MAX_TIMESTEPS = 52*10
   pbar = tqdm(total=EPOCHS * MAX_TIMESTEPS)
+  TRAD_CYCLE_LENGTH = 40
 
   env = Facility()
   env_traditional = Facility()
@@ -59,7 +60,7 @@ def test():
     state_, reward, done = env.control(control_matrix)    
 
     # Control traditional plant we're comparing ourselves to
-    if i > 0 and i % 35 == 0:
+    if i > 0 and i % TRAD_CYCLE_LENGTH == 0:
       tradnewstate, tradreward, traddone = env_traditional.control(torch.ones(config.N_TANKS, dtype=torch.float))
       trad_accumulative_reward = trad_accumulative_reward + tradreward
     else:
@@ -79,7 +80,9 @@ def test():
     trad_rewards.append(trad_accumulative_reward)
     price_history.append(env.price)
 
-  
+
+  print('ML performance increase over traditional: ', accumulative_reward / trad_accumulative_reward)
+
   axes[0].plot(total_tank_weights, label=f"Weights")
   axes[0].plot([config.MAX_BIOMASS_FACILITY for _ in range(len(total_tank_weights))])
   #axes[0].plot(prices, label=f"Price development {epoch}")
@@ -95,7 +98,9 @@ def test():
   #plt.show()
   plt.close()
 
-  plt.plot(total_tank_weights)
+  
+  plt.plot(total_tank_weights, label="Total tank weight")
+  plt.plot([config.MAX_BIOMASS_FACILITY for _ in range(len(total_tank_weights))], label="Biomass Penalty Threshold")
   plt.xlabel('Time step (week)')
   plt.ylabel('Sum tank weight')
   plt.savefig('./figures/eval/tankweight.jpg', format="jpg")

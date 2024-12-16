@@ -27,8 +27,9 @@ coarseness = 100
 weight_increment = (3 - 2) / coarseness
 price_increment = (120 - 60) / coarseness
 heatmap = np.zeros((coarseness, coarseness))
+probs = []
 for i in range(coarseness):
-  fishweight = 2 + weight_increment * i
+  fishweight = 2.5 # 2 + weight_increment * i
   for j in range(coarseness):
     price = 60 + price_increment * i
     modelinput = np.log(price)
