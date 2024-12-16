@@ -15,7 +15,7 @@ def test():
   fig, axes = plt.subplots(3, 1)
 
   EPOCHS = 1
-  MAX_TIMESTEPS = 50000
+  MAX_TIMESTEPS = 52*10
   pbar = tqdm(total=EPOCHS * MAX_TIMESTEPS)
 
   env = Facility()
@@ -34,6 +34,8 @@ def test():
   tank_weight_on_harvest_actions = []
   price_shock_on_harvest_actions = []
   price_deviation_from_mean_on_harvest_actions = []
+  
+  price_history = []
 
   for i in range(MAX_TIMESTEPS):
     pbar.update(1)
@@ -57,7 +59,7 @@ def test():
     state_, reward, done = env.control(control_matrix)    
 
     # Control traditional plant we're comparing ourselves to
-    if i > 0 and i % 49 == 0:
+    if i > 0 and i % 35 == 0:
       tradnewstate, tradreward, traddone = env_traditional.control(torch.ones(config.N_TANKS, dtype=torch.float))
       trad_accumulative_reward = trad_accumulative_reward + tradreward
     else:
@@ -66,6 +68,8 @@ def test():
     
     # Update state variable
     env.grow()
+    env_traditional.grow()
+    env_traditional.price = env.price
     state = state_
     
     # Track plot data points
@@ -73,6 +77,7 @@ def test():
     accumulative_reward = accumulative_reward + reward.item()
     rewards.append(accumulative_reward)
     trad_rewards.append(trad_accumulative_reward)
+    price_history.append(env.price)
 
   
   axes[0].plot(total_tank_weights, label=f"Weights")
@@ -99,7 +104,8 @@ def test():
   plt.plot(rewards, label="Model Reward")
   plt.plot(trad_rewards, label="Traditional Reward")
   plt.xlabel('Time step (week)')
-  plt.ylabel('Reward')
+  plt.ylabel('Accumulative Reward')
+  plt.legend()
   plt.savefig('./figures/eval/accumulative_reward.jpg', format="jpg")
   plt.close()
   
@@ -109,7 +115,6 @@ def test():
   plt.savefig('./figures/eval/model_probability.jpg', format="jpg")
   plt.close()
 
-  print(np.corrcoef(total_tank_weights, harvest_probs_history))
 
   plt.hist(tank_weight_on_harvest_actions)
   plt.xlabel('Tank weight on harvest')
@@ -123,10 +128,18 @@ def test():
   plt.savefig('./figures/eval/harvest_action_histogram_price.jpg', format="jpg")
   plt.close()
 
+  print('mean price deviation from year mean', np.mean(price_deviation_from_mean_on_harvest_actions))
   plt.hist(price_deviation_from_mean_on_harvest_actions)
   plt.xlabel('Price deviation from year mean on harvest')
   plt.ylabel('Frequency')
   plt.savefig('./figures/eval/harvest_action_histogram_price_deviation.jpg', format="jpg")
+  plt.close()
+
+  plt.plot(price_history)
+  plt.xlabel('Week #')
+  plt.ylabel('Spot Price')
+  plt.title('Price model development')
+  plt.savefig('./figures/eval/price_history.jpg', format="jpg")
   plt.close()
 
 

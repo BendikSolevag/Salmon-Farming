@@ -16,8 +16,8 @@ def train():
   fig, axes = plt.subplots(2, 1)
   
 
-  EPOCHS = 6
-  MAX_TIMESTEPS = 1000
+  EPOCHS = 1
+  MAX_TIMESTEPS = 16000
   pbar = tqdm(total=EPOCHS * MAX_TIMESTEPS)
   for epoch in range(EPOCHS):
     env = Facility()
@@ -41,7 +41,7 @@ def train():
       state_, reward, done = env.control(control_matrix)    
 
         
-      delta = reward + config.DISCOUNT_RATE * value_net(state_) - value_net.forward(state)    
+      delta = reward - R_bar + config.DISCOUNT_RATE * value_net(state_) - value_net.forward(state)    
       R_bar = ((1 - learning_rate) * R_bar + learning_rate * delta).detach()
 
       critic_loss = delta**2
@@ -62,11 +62,11 @@ def train():
       accumulative_reward = accumulative_reward + reward.item()
       rewards.append(accumulative_reward)
 
-    if epoch % (EPOCHS - 1) == 0:
-      axes[0].plot(total_tank_weights, label=f"epoch {epoch}")
-      axes[0].plot([config.MAX_BIOMASS_FACILITY for _ in range(len(total_tank_weights))])
-      #axes[0].plot(prices, label=f"Price development {epoch}")
-      axes[1].plot(rewards, label=f"epoch {epoch}")
+    #if epoch % (EPOCHS - 1) == 0:
+    axes[0].plot(total_tank_weights, label=f"epoch {epoch}")
+    axes[0].plot([config.MAX_BIOMASS_FACILITY for _ in range(len(total_tank_weights))])
+    #axes[0].plot(prices, label=f"Price development {epoch}")
+    axes[1].plot(rewards, label=f"epoch {epoch}")
       
   torch.save(policy_net.state_dict(), './model/policy_net.pth')
 

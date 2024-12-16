@@ -186,7 +186,7 @@ class Facility:
 
 def f(t, a0, b0, a1, theta):
   omega = 2*np.pi/TIMESTEPS_PER_ANNUM
-  return a0 + b0*t + a1*np.sin(omega*t + theta)
+  return a0 + a1*np.sin(omega*t + theta)
 
 def oup():
   i = 0
@@ -201,4 +201,5 @@ def oup():
     dx = -SPOT_KAPPA * x * SPOT_DT + SPOT_SIGMA * np.sqrt(SPOT_DT) * rand
     x = x + dx
     spot = x + f(i, *F_PARAMS)
+    spot = max(1, spot)
 
